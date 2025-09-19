@@ -1,0 +1,53 @@
+# ---- OS / Editor ----
+.DS_Store
+Thumbs.db
+
+# ---- Python basics ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+.venv*/        # in case of alternate venv names
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.*
+htmlcov/
+
+# ---- MLflow local tracking ----
+mlruns/
+
+# ---- Data (raw) — keep DVC stubs ----
+data/raw/**
+!data/raw/*.dvc
+!data/raw/.gitkeep
+
+# ---- DVC ----
+.dvc/cache/
+.dvc/tmp/
+_dvc_remote/**
+
+# ---- Secrets / env files ----
+shared_env/.env
+.env
+.env.*
+!.env.example
+!.env.template
+
+# ---- Docs/validation scratch ----
+docs_global/validation/**
+
+# ---- Backups & archives you mentioned ----
+_shared_env_backup_*/
+shared_env.zip
+*.bak
+*.tmp
+*.swp

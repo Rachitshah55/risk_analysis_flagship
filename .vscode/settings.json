@@ -1,0 +1,14 @@
+{
+    "python.defaultInterpreterPath": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.profiles.windows": {
+      "PowerShell (Risk)": {
+        "path": "powershell.exe",
+        "args": [
+          "-NoExit",
+          "-Command",
+          "& 'C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/Activate.ps1'"
+        ]
+      }
+    }
+  }
