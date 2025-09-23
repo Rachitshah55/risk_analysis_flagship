@@ -1,14 +1,24 @@
 {
-    "python.defaultInterpreterPath": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
-    "terminal.integrated.defaultProfile.windows": "PowerShell",
-    "terminal.integrated.profiles.windows": {
-      "PowerShell (Risk)": {
-        "path": "powershell.exe",
-        "args": [
-          "-NoExit",
-          "-Command",
-          "& 'C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/Activate.ps1'"
-        ]
-      }
+  // Use the real venv
+  "python.defaultInterpreterPath": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+
+  // Load MLFLOW_TRACKING_URI, etc. for Run ▶
+  "python.envFile": "C:\\DevProjects\\risk_analysis_flagship\\shared_env\\.env",
+
+  // Choose which comes up by default on new terminal: "PowerShell" or "PowerShell (Risk)"
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": { "path": "powershell.exe" },
+
+    // Your venv-activated profile
+    "PowerShell (Risk)": {
+      "path": "powershell.exe",
+      "args": [
+        "-NoExit",
+        "-Command",
+        "& 'C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\Activate.ps1'"
+      ]
     }
   }
+}

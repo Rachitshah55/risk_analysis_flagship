@@ -1,62 +1,58 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-      {
-        "label": "API: Uvicorn (reload)",
-        "type": "shell",
-        "command": "C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
-        "problemMatcher": [],
-        "presentation": { "reveal": "always", "focus": true }
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "API: Uvicorn (reload)",
+      "type": "shell",
+      "command": "${config:python.defaultInterpreterPath} -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+      "options": {
+        "env": {
+          "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
+        }
       },
-      {
-        "label": "MLflow: UI",
-        "type": "shell",
-        "command": "C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/python.exe -m mlflow ui --port 5000",
-        "problemMatcher": [],
-        "presentation": { "reveal": "always", "focus": true }
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true }
+    },
+    {
+      "label": "MLflow: UI",
+      "type": "shell",
+      "command": "${config:python.defaultInterpreterPath} -m mlflow ui --port 5000",
+      "options": {
+        "env": {
+          "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
+        }
       },
-      {
-        "label": "Prefect: run flow.py",
-        "type": "shell",
-        "command": "C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/python.exe ${workspaceFolder}/flow.py",
-        "problemMatcher": [],
-        "presentation": { "reveal": "always", "focus": true }
-      },
-      {
-        "label": "DVC: repro",
-        "type": "shell",
-        "command": "C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/python.exe -m dvc repro",
-        "problemMatcher": [],
-        "presentation": { "reveal": "always", "focus": true }
-      },
-      {
-        "label": "Python: run script (prompt)",
-        "type": "shell",
-        "command": "C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/python.exe ${input:scriptPath}",
-        "problemMatcher": [],
-        "presentation": { "reveal": "always", "focus": true }
-      },
-      {
-        "label": "Evidently: generate report (example)",
-        "type": "shell",
-        "command": "C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/python.exe scripts/evidently_report.py",
-        "problemMatcher": [],
-        "presentation": { "reveal": "always", "focus": true }
-      },
-      {
-        "label": "GE: validate (example)",
-        "type": "shell",
-        "command": "C:/DevProjects/risk_analysis_flagship/shared_env/.venv/Scripts/python.exe -m great_expectations checkpoint run my_checkpoint",
-        "problemMatcher": [],
-        "presentation": { "reveal": "always", "focus": true }
-      }
-    ],
-    "inputs": [
-      {
-        "id": "scriptPath",
-        "type": "promptString",
-        "description": "Enter relative script path (e.g., scripts/train.py)",
-        "default": "scripts/train.py"
-      }
-    ]
-  }
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true }
+    },
+    {
+      "label": "Prefect: run flow.py",
+      "type": "shell",
+      "command": "${config:python.defaultInterpreterPath} ${workspaceFolder}/flow.py",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true }
+    },
+    {
+      "label": "DVC: repro",
+      "type": "shell",
+      "command": "${config:python.defaultInterpreterPath} -m dvc repro",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true }
+    },
+    {
+      "label": "Python: run script (prompt)",
+      "type": "shell",
+      "command": "${config:python.defaultInterpreterPath} ${input:scriptPath}",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "scriptPath",
+      "type": "promptString",
+      "description": "Enter relative script path (e.g., shared_env/scripts/train.py)",
+      "default": "shared_env/scripts/mlflow_smoke.py"
+    }
+  ]
+}
