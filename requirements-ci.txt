@@ -1,0 +1,6 @@
+  
+   pandas
+   evidently
+   scikit-learn
+   xgboost
+   mlflow
