@@ -1,0 +1,8 @@
+{
+  "numeric_features": [
+    "income_to_loan_ratio",
+    "num_past_delinquencies",
+    "credit_utilization_pct",
+    "n_records"
+  ]
+}

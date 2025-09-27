@@ -1,0 +1,7 @@
+{
+    "label_column": "loan_status",
+    "label_kind": "status",
+    "bad_status_values": ["Charged Off", "Default", "Write Off", "Written Off"]
+  }
+  
+  
