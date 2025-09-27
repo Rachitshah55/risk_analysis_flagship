@@ -1,0 +1,11 @@
+{
+  "numeric_features": [
+    "rolling_amount_last_1h",
+    "geo_location_mismatch",
+    "amount",
+    "is_chargeback",
+    "hour_of_day",
+    "account_age_days",
+    "avg_amount_user"
+  ]
+}

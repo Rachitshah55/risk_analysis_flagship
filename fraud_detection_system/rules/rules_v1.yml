@@ -1,0 +1,11 @@
+# ===== BEGIN: rules_v1.yml =====
+- name: High Amount, New Account
+  condition: "amount > 5000 and account_age_days < 30"
+  action: flag
+- name: Velocity Spike
+  condition: "rolling_amount_last_1h > 3 * avg_amount_user"
+  action: flag
+- name: Cross-Border at Odd Hours
+  condition: "geo_location_mismatch == 1 and hour_of_day < 5"
+  action: review
+# ===== END: rules_v1.yml =====
