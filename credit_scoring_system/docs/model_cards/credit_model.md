@@ -132,4 +132,3 @@
   },
   "notes": "Stage 3 baseline models. Data: borrower-level engineered features; label aggregated from loans."
 }
-```

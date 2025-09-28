@@ -120,4 +120,3 @@
   },
   "notes": "Stage 3 baseline XGB + YAML rules. Threshold chosen for recall. Timestamp guard prevents stale features."
 }
-```
