@@ -207,3 +207,52 @@
 - Governance artifacts (model card, metrics, confusion matrix) are in place.
 
 ---
+
+# Progress Log — Stage 3 (Parts D–G)
+
+## D) Governance — Model Cards
+- Verified both draft files existed:
+  - `docs/model_cards/credit_model.md`
+  - `docs/model_cards/fraud_model.md`
+- Fully enriched both files with:
+  - Data snapshot period, sample sizes, class balance
+  - Features used (from feature_list.json)
+  - Modeling approach, metrics, assumptions/limits
+  - Ethical considerations and governance notes
+  - Approval status: **Stage 3 — Baseline (not for production)**
+- Old JSON stubs preserved in Appendix for traceability.
+
+## E) Health Checks
+- Added `shared_env/scripts/health_checks_stage3.py`.
+- Script validates:
+  - Credit model directories exist.
+  - Fraud model directories exist.
+  - Fraud `threshold.json` present and within (0,1).
+- Ran successfully via GUI in Void IDE:
+  - Output: `✅ STAGE 3 HEALTH CHECKS PASSED`
+
+## F) Commit & Push
+- Used Void IDE Source Control panel (GUI-first).
+- Staged and committed with clear messages:
+  - `feat(credit): Stage 3 baseline models + MLflow logging`
+  - `feat(fraud): Stage 3 XGB + YAML rules + combined decision`
+  - `chore: add Stage 3 health checks`
+  - `docs: add Stage 3 model cards (drafts)`
+- Push completed successfully.
+
+## G) Success Criteria Achieved
+- ✅ Credit artifacts:  
+  `credit_scoring_system/models/credit_YYYYmmdd_HHMMSS/{logreg_calibrated.joblib, xgb_model.joblib, feature_list.json}`
+- ✅ Fraud artifacts:  
+  `fraud_detection_system/models/fraud_YYYYmmdd_HHMMSS/{xgb_model.joblib, threshold.json, feature_list.json}`
+- ✅ Rules file: `fraud_detection_system/rules/rules_v1.yml`
+- ✅ Governance: enriched model cards committed.
+- ✅ Health checks passed.
+- ✅ MLflow runs recorded under:
+  - `credit_stage3_models`
+  - `fraud_stage3_model_and_rules`
+
+---
+
+**Stage 3 (Parts D–G) complete.**  
+Artifacts, governance docs, and checks are all in place. Ready to proceed to Stage 4.
