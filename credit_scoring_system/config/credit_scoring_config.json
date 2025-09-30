@@ -1,0 +1,12 @@
+
+{
+  "model_dir_glob": "credit_scoring_system/models/credit_*",
+  "features_path": "credit_scoring_system/data/featurestore/credit_features.parquet",
+  "raw_loans_path": "credit_scoring_system/data/raw/loans.csv",
+  "id_column": "borrower_id",
+  "pd_model_preference": ["logreg_calibrated_or_plain.joblib", "xgb_model.joblib"],
+  "ead_column": "loan_amount",
+  "lgd_default": 0.45,
+  "segment_keys": ["grade", "state", "vintage_year"],
+  "timestamp_guard": true
+}

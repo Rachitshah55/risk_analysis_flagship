@@ -1,7 +1,7 @@
-borrower_id,loan_amount,annual_income,delinq_2yrs,revol_util,loan_status
-B001,10000,60000,0,12.5%,Charged Off
-B002,5000,40000,1,44.0%,Default
-B003,8000,60000,0,15%,Write Off
-B004,18000,160000,0,11%,Written Off
-B005,10000,90000,1,10%,Current
-B006,5000,120000,0,5%,Fully Paid
+borrower_id,loan_amount,annual_income,delinq_2yrs,revol_util,loan_status,grade,state,vintage_year
+B001,10000,60000,0,12.5%,Charged Off,A,MS,2022
+B002,45000,40000,1,44.0%,Default,C,CO,2012
+B003,8000,60000,0,15%,Write Off,A,OK,2019
+B004,18000,160000,0,11%,Written Off,A,WA,2007
+B005,500000,90000,1,10%,Current,B,LA,2023
+B006,5000,120000,0,5%,Fully Paid,A,PA,2020
