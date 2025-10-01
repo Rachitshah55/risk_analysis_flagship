@@ -34,3 +34,25 @@ jobs:
       - name: Run validation dry-run
         run: |
           python shared_env/scripts/validate_sample_evidently.py
+  fraud-api-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install deps (API)
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn[standard] joblib pandas pydantic shap pytest pyyaml
+      - name: Health check artifacts
+        run: |
+          python shared_env/scripts/health_checks_stage4_fraud_api.py
+      - name: Pytest (unit)
+        run: |
+          pytest -q fraud_detection_system/api/tests/test_app.py
+      - name: Uvicorn smoke (health)
+        run: |
+          start /B python fraud_detection_system/api/run_api.py
+          powershell -Command "Start-Sleep -s 5"
+          curl -s http://127.0.0.1:8000/health        

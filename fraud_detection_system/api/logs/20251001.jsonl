@@ -1,0 +1,1 @@
+{"ts": "2025-10-01T01:06:01", "tx": {"amount": 120.5, "account_age_days": 200, "country": "US", "device_id": "D_A", "hour_of_day": 20}, "proba": 0.06547587364912033, "decision": "allow", "rules_hit": [], "latency_ms": 10, "model_ts": "2025-09-30T16:41:47"}

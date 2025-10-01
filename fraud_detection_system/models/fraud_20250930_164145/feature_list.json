@@ -4,12 +4,8 @@
     "geo_location_mismatch",
     "amount",
     "is_chargeback",
-    "hour_of_day",
     "account_age_days",
+    "hour_of_day",
     "avg_amount_user"
-  ],
-  "categorical_features": [
-    "country",
-    "device_id"
   ]
 }

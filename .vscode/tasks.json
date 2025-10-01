@@ -14,6 +14,16 @@
       "presentation": { "reveal": "always", "focus": true }
     },
     {
+      "label": "Fraud API (reload)",
+      "type": "process",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": [
+        ".\\fraud_detection_system\\api\\run_api.py"
+      ],
+      "options": { "cwd": "C:\\DevProjects\\risk_analysis_flagship" },
+      "problemMatcher": []
+    },
+    {
       "label": "MLflow: UI",
       "type": "shell",
       "command": "${config:python.defaultInterpreterPath} -m mlflow ui --port 5000",
@@ -56,3 +66,4 @@
     }
   ]
 }
+
