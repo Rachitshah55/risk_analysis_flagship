@@ -50,6 +50,14 @@
       "presentation": { "reveal": "always", "focus": true }
     },
     {
+      "label": "Monitoring: Credit (monthly)",
+      "type": "shell",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\shared_env\\monitoring\\monitor_credit_drift.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
       "label": "Python: run script (prompt)",
       "type": "shell",
       "command": "${config:python.defaultInterpreterPath} ${input:scriptPath}",
