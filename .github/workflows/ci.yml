@@ -2,6 +2,10 @@ name: ci
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: windows-latest
@@ -13,17 +17,22 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - name: Show Python
         run: |
           python --version
           python -m pip --version
 
+      - name: Upgrade pip tooling
+        run: |
+          python -m pip install --upgrade pip wheel
+
       - name: Install CI deps
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
+          # Ensure Evidently matches project standard (avoid 0.4.x legacy imports)
+          pip install "evidently>=0.7,<0.8"
 
       - name: Show workspace + data
         run: |
@@ -34,25 +43,124 @@ jobs:
       - name: Run validation dry-run
         run: |
           python shared_env/scripts/validate_sample_evidently.py
+
   fraud-api-smoke:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+
+      - name: Upgrade pip tooling
+        run: |
+          python -m pip install --upgrade pip wheel
+
       - name: Install deps (API)
         run: |
-          python -m pip install --upgrade pip
-          pip install fastapi uvicorn[standard] joblib pandas pydantic shap pytest pyyaml
+          pip install fastapi uvicorn[standard] requests joblib pandas pydantic shap pytest pyyaml
+
       - name: Health check artifacts
         run: |
           python shared_env/scripts/health_checks_stage4_fraud_api.py
+
       - name: Pytest (unit)
         run: |
           pytest -q fraud_detection_system/api/tests/test_app.py
-      - name: Uvicorn smoke (health)
+
+      - name: Launch API (background) and wait for readiness
         run: |
-          start /B python fraud_detection_system/api/run_api.py
-          powershell -Command "Start-Sleep -s 5"
-          curl -s http://127.0.0.1:8000/health        
+          # Start the API via your script; capture PID
+          $p = Start-Process -FilePath "python" -ArgumentList "fraud_detection_system/api/run_api.py" -PassThru
+          Set-Content -Path api_pid.txt -Value "pid=$($p.Id)"
+          # Probe /health up to ~15s
+          $ok = $false
+          for ($i=0; $i -lt 30; $i++) {
+            try {
+              Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method GET -TimeoutSec 2 | Out-Null
+              $ok = $true; break
+            } catch {
+              Start-Sleep -Milliseconds 500
+            }
+          }
+          if (-not $ok) { throw "API failed to become ready on /health" }
+
+      - name: /health and /score smoke
+        run: |
+          # /health
+          $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method GET -TimeoutSec 5
+          if (-not $health) { throw "Empty /health response" }
+          # /score
+          $body = @{
+            amount = 120.5
+            account_age_days = 200
+            country = "US"
+            device_id = "D_A"
+            hour_of_day = 20
+          } | ConvertTo-Json
+          $resp = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/score" -ContentType "application/json" -Body $body -TimeoutSec 10
+          if (-not $resp) { throw "Empty /score response" }
+          if (-not ($resp.PSObject.Properties.Name -contains "decision")) { throw "Missing 'decision' in /score response" }
+          $probKey = @("proba","prob","score","p_fraud","fraud_proba","model_score") | Where-Object { $resp.PSObject.Properties.Name -contains $_ } | Select-Object -First 1
+          if (-not $probKey) { throw "Missing probability-like key in /score response" }
+          $p = [double]$resp.$probKey
+          if ($p -lt 0 -or $p -gt 1) { throw "Probability out of range: $p" }
+          Write-Host "✅ /score OK — decision=$($resp.decision) $probKey=$p"
+
+      - name: Stop API
+        if: always()
+        run: |
+          if (Test-Path api_pid.txt) {
+            $pidLine = Get-Content api_pid.txt | Select-Object -First 1
+            $pid = ($pidLine -split "=")[1]
+            Try { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue } Catch {}
+            Remove-Item api_pid.txt -ErrorAction SilentlyContinue
+          }
+  stage5-monitor-smoke:
+    name: Stage 5 Monitor Smoke (dry-run, Python 3.13)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Show Python
+        run: |
+          python --version
+          python -m pip --version
+
+      - name: Upgrade pip tooling
+        run: |
+          python -m pip install --upgrade pip wheel
+
+      - name: Install deps (monitoring only)
+        run: |
+          pip install pandas numpy matplotlib "evidently>=0.7,<0.8" mlflow pyarrow scikit-learn xgboost
+
+      - name: Credit monitor (dry-run)
+        run: |
+          python shared_env/monitoring/monitor_credit_drift.py --dry-run
+
+      - name: Fraud monitor (dry-run)
+        run: |
+          python shared_env/monitoring/monitor_fraud_api_logs.py --dry-run
+
+      - name: Upload monitoring artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage5-monitoring-artifacts
+          path: |
+            docs_global/monitoring/**
+          if-no-files-found: warn
+

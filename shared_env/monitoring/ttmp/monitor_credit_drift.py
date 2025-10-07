@@ -1,7 +1,7 @@
 # ===== BEGIN: monitor_credit_drift.py =====
 import os, sys, json, math, argparse, re
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -125,6 +125,8 @@ def build_evidently_report(ref_df, cur_df, cols, out_html):
         return False
 
 
+
+
 # --- PSI helpers ---
 def psi_for_col(ref, cur, buckets=10, eps=1e-6):
     ref = pd.Series(ref).dropna().astype(float)
@@ -170,7 +172,7 @@ def parse_score_date_from_name(p: Path):
 def latest_two_scoring_files(out_dir: Path):
     files = sorted(out_dir.glob("pd_scores_*.parquet"), key=lambda p: p.name)
     if len(files) < 2:
-        raise FileNotFoundError("Need at least two PD score files.")
+        raise FileNotFoundError("Need at least two monthly PD score files.")
     return files[-2], files[-1]
 
 
@@ -267,39 +269,31 @@ def main():
     if args.dry_run:
         ref = pd.DataFrame({"pd": [0.01, 0.02, 0.03], "income_to_loan_ratio": [2, 3, 4]})
         cur = pd.DataFrame({"pd": [0.02, 0.03, 0.05], "income_to_loan_ratio": [2.2, 3.1, 3.8]})
-        # Use today's date for the output folder; synthesize file dates for metrics
-        run_dt = datetime.now()
-        ref_dt = run_dt - timedelta(days=1)
-        cur_dt = run_dt
+        cur_dt = datetime.now()
     else:
         ref_path, cur_path = latest_two_scoring_files(scores_dir)
         ref = pd.read_parquet(ref_path)
         cur = pd.read_parquet(cur_path)
-        # Capture actual file dates for metrics, but don't use them for the folder name
-        ref_dt = parse_score_date_from_name(ref_path) or datetime.fromtimestamp(ref_path.stat().st_mtime)
-        cur_dt = parse_score_date_from_name(cur_path) or datetime.fromtimestamp(cur_path.stat().st_mtime)
-        run_dt = datetime.now()
+        cur_dt = parse_score_date_from_name(cur_path) or datetime.now()
 
     # Normalize PD column so it's always present when possible
     ref = normalize_pd_column(ref)
     cur = normalize_pd_column(cur)
 
-    # Folder is based on RUN DATE (today), not the scoring file date
-    out_dir = root / f"docs_global/monitoring/credit/{run_dt.strftime('%Y-%m-%d')}"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
+    out_month_dir = root / f"docs_global/monitoring/credit/{cur_dt.strftime('%Y-%m')}"
+    out_month_dir.mkdir(parents=True, exist_ok=True)
 
     # Feature set to drift-check (numeric only, plus pd if present)
     numeric_candidates = [c for c in ref.columns if pd.api.types.is_numeric_dtype(ref[c]) and c != "borrower_id"]
     monitor_cols = ["pd"] + [c for c in numeric_candidates if c != "pd"][:24]  # ensure 'pd' first; cap for safety
 
     # Evidently HTML (best-effort, with fallback)
-    drift_html = out_dir / "drift_report.html"
+    drift_html = out_month_dir / "drift_report.html"
     ok_html = build_evidently_report(ref, cur, monitor_cols, drift_html.as_posix())
 
     # PSI table (incl. pd)
     psi_df = compute_psi_table(ref, cur, monitor_cols)
-    psi_csv = out_dir / "drift_summary.csv"
+    psi_csv = out_month_dir / "drift_summary.csv"
     psi_df.to_csv(psi_csv, index=False)
 
     # Minimal HTML fallback if Evidently failed to create the file
@@ -307,7 +301,7 @@ def main():
         psi_df.to_html(drift_html, index=False)
 
     # Alert if any PSI >= 0.25
-    alert_path = out_dir / "alert.txt"
+    alert_path = out_month_dir / "alert.txt"
     hit = psi_df["psi"].fillna(0).ge(0.25).any()
     if hit:
         bad = psi_df.sort_values("psi", ascending=False).head(5)
@@ -322,7 +316,7 @@ def main():
                 pass
 
     # Calibration (optional if labels exist)
-    cal_png = out_dir / "calibration_plot.png"
+    cal_png = out_month_dir / "calibration_plot.png"
     label_info = try_load_labels(root / r"credit_scoring_system\data\raw\loans.csv")
     make_calibration_plot(cur, label_info, cal_png)
 
@@ -344,7 +338,7 @@ def main():
     except Exception as e:
         print(f"[WARN] MLflow logging skipped: {e}")
 
-    print(f"[OK] Credit monitoring written to: {out_dir}")
+    print(f"[OK] Credit monitoring written to: {out_month_dir}")
 
 
 if __name__ == "__main__":
