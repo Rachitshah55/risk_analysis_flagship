@@ -17,7 +17,7 @@ Both projects (credit + fraud) follow the same automation design:
    Example: fraud transactions scored in real-time → recall below threshold → Slack alert → trigger retrain.  
 
 4. **Auto-reporting & dashboards**  
-   Example: monthly credit EL report, daily fraud ops summary, dashboards refreshed automatically.  
+   Example: daily credit monitoring, monthly credit EL report, daily fraud ops summary., dashboards refreshed automatically.  
 
 ### Tools & Frameworks
 - **Prefect/n8n** → Orchestration.  

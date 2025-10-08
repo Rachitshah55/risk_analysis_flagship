@@ -32,9 +32,11 @@
 6. **Monitoring**
    - Evidently drift detection (PSI > 0.25 → trigger retrain).
    - Calibration slope < 0.9 → alert.
+   - scheduled daily from Stage 5
 
 7. **Reporting**
    - Monthly risk reports with KPIs.
+   - Monthly reports aggregate daily monitoring outputs.
    - Portfolio breakdown tables.
 
 8. **Governance**

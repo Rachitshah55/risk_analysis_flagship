@@ -20,6 +20,7 @@
 
 ## Reports (HTML/PDF)
 - Monthly risk report template:
+- Credit monitoring is daily (Stage 5); this report summarizes monthly.
   1. **Executive Summary** (portfolio risk snapshot).
   2. **Model Performance** (AUC, KS, calibration).
   3. **Segment Analysis** (by grade, geography).

@@ -21,9 +21,9 @@ This roadmap aligns both projects while keeping them modular.
 2. Transformation (dbt + SQL).  
 3. Model training (logistic regression + XGBoost).  
 4. Scoring portfolio → PD + Expected Loss.  
-5. Monitoring with Evidently (AUC, calibration, PSI drift).  
+5. runs daily from Stage 5 to Monitoring with Evidently (AUC, calibration, PSI drift).  
 6. Reporting → nbconvert reports + Power BI dashboards.  
-7. Automation via Prefect monthly flow.  
+7. Automation via Prefect: daily monitoring Flows, monthly reporting Flow.  
 8. Governance (model card, CI/CD gates).  
 
 ## Fraud Detection Project Stages
