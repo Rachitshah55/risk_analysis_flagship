@@ -1,10 +1,8 @@
 name: ci
+
 on:
   push:
   pull_request:
-
-permissions:
-  contents: read
 
 jobs:
   validate:
@@ -12,6 +10,9 @@ jobs:
     defaults:
       run:
         shell: pwsh
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -24,15 +25,14 @@ jobs:
           python --version
           python -m pip --version
 
-      - name: Upgrade pip tooling
-        run: |
-          python -m pip install --upgrade pip wheel
-
       - name: Install CI deps
         run: |
-          pip install -r requirements-ci.txt
-          # Ensure Evidently matches project standard (avoid 0.4.x legacy imports)
-          pip install "evidently>=0.7,<0.8"
+          python -m pip install --upgrade pip wheel
+          if (Test-Path "requirements-ci.txt") {
+            pip install -r requirements-ci.txt
+          } else {
+            pip install pandas numpy evidently
+          }
 
       - name: Show workspace + data
         run: |
@@ -78,13 +78,13 @@ jobs:
           $env:PYTHONUNBUFFERED = "1"
           $args = "fraud_detection_system/api/run_api.py"
           $p = Start-Process -FilePath "python" -ArgumentList $args -PassThru -NoNewWindow `
-                -RedirectStandardOutput api_stdout.txt -RedirectStandardError api_stderr.txt
+               -RedirectStandardOutput api_stdout.txt -RedirectStandardError api_stderr.txt
           "pid=$($p.Id)" | Out-File -FilePath api_pid.txt -Encoding ascii
           Start-Sleep -Seconds 1
           if ($p.HasExited) {
             Write-Host "API process exited early with code $($p.ExitCode)"
-            if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt ---"; Get-Content api_stdout.txt }
-            if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt ---"; Get-Content api_stderr.txt }
+            if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt (tail) ---"; Get-Content api_stdout.txt -Tail 200 }
+            if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt (tail) ---"; Get-Content api_stderr.txt -Tail 200 }
             throw "API failed to start"
           }
 
@@ -107,13 +107,12 @@ jobs:
               Invoke-RestMethod -Uri "http://127.0.0.1:$port/health" -TimeoutSec 2 | Out-Null
               $ok = $true; break
             } catch {
-              # If the process died, dump logs and fail fast
               try {
                 $proc = Get-Process -Id $apiPid -ErrorAction SilentlyContinue
                 if (-not $proc) {
                   Write-Host "API process ended while waiting."
-                  if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt ---"; Get-Content api_stdout.txt }
-                  if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt ---"; Get-Content api_stderr.txt }
+                  if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt (tail) ---"; Get-Content api_stdout.txt -Tail 200 }
+                  if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt (tail) ---"; Get-Content api_stderr.txt -Tail 200 }
                   throw "API terminated before readiness."
                 }
               } catch {}
@@ -122,8 +121,8 @@ jobs:
           }
           if (-not $ok) {
             Write-Host "Timed out waiting for /health on port $port"
-            if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt ---"; Get-Content api_stdout.txt }
-            if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt ---"; Get-Content api_stderr.txt }
+            if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt (tail) ---"; Get-Content api_stdout.txt -Tail 200 }
+            if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt (tail) ---"; Get-Content api_stderr.txt -Tail 200 }
             throw "API failed to become ready on port $port"
           }
 
@@ -161,48 +160,52 @@ jobs:
           if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt (tail) ---"; Get-Content api_stdout.txt -Tail 200 }
           if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt (tail) ---"; Get-Content api_stderr.txt -Tail 200 }
 
-              
+      - name: Upload API logs (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fraud-api-logs
+          path: |
+            api_stdout.txt
+            api_stderr.txt
+            api_pid.txt
+            api_port.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
   stage5-monitor-smoke:
-    name: Stage 5 Monitor Smoke (dry-run, Python 3.13)
     runs-on: windows-latest
     defaults:
       run:
         shell: pwsh
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
-      - name: Show Python
-        run: |
-          python --version
-          python -m pip --version
-
-      - name: Upgrade pip tooling
+      - name: Install deps (monitoring)
         run: |
           python -m pip install --upgrade pip wheel
+          pip install pandas numpy matplotlib evidently mlflow
 
-      - name: Install deps (monitoring only)
-        run: |
-          pip install pandas numpy matplotlib "evidently>=0.7,<0.8" mlflow pyarrow scikit-learn xgboost
-
-      - name: Credit monitor (dry-run)
+      - name: Credit monitor (dry)
         run: |
           python shared_env/monitoring/monitor_credit_drift.py --dry-run
 
-      - name: Fraud monitor (dry-run)
+      - name: Fraud monitor (dry)
         run: |
           python shared_env/monitoring/monitor_fraud_api_logs.py --dry-run
 
       - name: Upload monitoring artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: stage5-monitoring-artifacts
+          name: monitoring-artifacts
           path: |
-            docs_global/monitoring/**
-          if-no-files-found: warn
-
+            docs_global/monitoring/**/*
+          if-no-files-found: ignore
+          retention-days: 7
