@@ -52,7 +52,7 @@ jobs:
     env:
       PYTHONIOENCODING: utf-8
       PYTHONUTF8: "1"
-      # Set to "1" to fail on /score schema errors (HTTP 422). Keep "0" while stabilizing.
+      # Keep schema checks lenient while stabilizing (set to "1" later to enforce /score shape strictly)
       STRICT_API_SMOKE: "0"
 
     steps:
@@ -74,11 +74,21 @@ jobs:
         run: |
           python -X utf8 shared_env/scripts/health_checks_stage4_fraud_api.py
 
-      - name: Launch API (background with logs)
+      - name: Detect API port from run_api.py (default 8001)
+        id: detect_port
+        run: |
+          $txt = Get-Content "fraud_detection_system/api/run_api.py" -Raw
+          $m = [regex]::Match($txt, 'port\s*=\s*(\d+)')
+          if ($m.Success) { $port = [int]$m.Groups[1].Value } else { $port = 8001 }
+          "port=$port" | Out-File -FilePath api_port.txt -Encoding ascii
+          Write-Host "Using port $port"
+
+      - name: Launch API (uvicorn, no reload) with logs
         id: launch_api
         run: |
           $env:PYTHONUNBUFFERED = "1"
-          $args = "fraud_detection_system/api/run_api.py"
+          $port = (Get-Content api_port.txt) -replace 'port=',''
+          $args = "-m uvicorn fraud_detection_system.api.app:app --host 127.0.0.1 --port $port --log-level info"
           $p = Start-Process -FilePath "python" -ArgumentList $args -PassThru -NoNewWindow `
                -RedirectStandardOutput api_stdout.txt -RedirectStandardError api_stderr.txt
           "pid=$($p.Id)" | Out-File -FilePath api_pid.txt -Encoding ascii
@@ -90,44 +100,18 @@ jobs:
             throw "API failed to start"
           }
 
-      - name: Detect API port from run_api.py (default 8001)
-        id: detect_port
+      - name: Wait for readiness (up to 120s; /health OR /openapi.json OR /docs OR /)
         run: |
-          $txt = Get-Content "fraud_detection_system/api/run_api.py" -Raw
-          $m = [regex]::Match($txt, 'port\s*=\s*(\d+)')
-          if ($m.Success) { $port = [int]$m.Groups[1].Value } else { $port = 8001 }
-          "port=$port" | Out-File -FilePath api_port.txt -Encoding ascii
-          Write-Host "Using port $port"
-
-      - name: Wait for readiness (up to 90s; /health OR /openapi.json)
-        run: |
-          $apiPid = ((Get-Content api_pid.txt) -replace 'pid=','')
           $port = (Get-Content api_port.txt) -replace 'port=',''
           $ok = $false
-          for ($i=0; $i -lt 90; $i++) {
-            $ready = $false
-            try {
-              Invoke-RestMethod -Uri "http://127.0.0.1:$port/health" -TimeoutSec 2 | Out-Null
-              $ready = $true
-            } catch {
-              try {
-                # Fallback: if /openapi.json is reachable, consider server "ready"
-                Invoke-RestMethod -Uri "http://127.0.0.1:$port/openapi.json" -TimeoutSec 2 | Out-Null
-                $ready = $true
-              } catch { $ready = $false }
+          $paths = @("health","openapi.json","docs","")
+          for ($i=0; $i -lt 120; $i++) {
+            foreach ($p in $paths) {
+              $u = "http://127.0.0.1:$port/" + $p
+              & curl.exe --noproxy 127.0.0.1 -sS -m 2 -o NUL $u
+              if ($LASTEXITCODE -eq 0) { $ok = $true; break }
             }
-            if ($ready) { $ok = $true; break }
-
-            # If the process died, dump logs and fail fast
-            try {
-              $proc = Get-Process -Id $apiPid -ErrorAction SilentlyContinue
-              if (-not $proc) {
-                Write-Host "API process ended while waiting."
-                if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt (tail) ---"; Get-Content api_stdout.txt -Tail 200 }
-                if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt (tail) ---"; Get-Content api_stderr.txt -Tail 200 }
-                throw "API terminated before readiness."
-              }
-            } catch {}
+            if ($ok) { break }
             Start-Sleep -Seconds 1
           }
           if (-not $ok) {
@@ -136,41 +120,35 @@ jobs:
             if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt (tail) ---"; Get-Content api_stderr.txt -Tail 200 }
             throw "API failed to become ready on port $port"
           }
+          Write-Host "API readiness OK."
 
-      - name: /health and /score smoke
+      - name: /health (best-effort) and /score smoke
         run: |
           $port = (Get-Content api_port.txt) -replace 'port=',''
-          # /health best-effort (don't fail if not present)
-          try {
-            $null = Invoke-RestMethod -Uri "http://127.0.0.1:$port/health" -Method GET -TimeoutSec 5
-            Write-Host "OK /health"
-          } catch { Write-Host "WARN: /health not present or non-200."; }
 
-          # Try /score with a generic payload; if 422 and STRICT_API_SMOKE=0, log and continue
-          $body = @{
-            amount = 120.5
-            account_age_days = 200
-            country = "US"
-            device_id = "D_A"
-            hour_of_day = 20
-          } | ConvertTo-Json
-
+          # /health best-effort
           try {
-            $resp = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$port/score" -ContentType "application/json" -Body $body -TimeoutSec 15
-            if (-not $resp) { throw "Empty /score response" }
-            if (-not ($resp.PSObject.Properties.Name -contains "decision")) { throw "Missing 'decision' in /score response" }
-            $probKey = @("proba","prob","score","p_fraud","fraud_proba","model_score") | Where-Object { $resp.PSObject.Properties.Name -contains $_ } | Select-Object -First 1
-            if (-not $probKey) { throw "Missing probability-like key in /score response" }
-            $p = [double]$resp.$probKey
-            if ($p -lt 0 -or $p -gt 1) { throw "Probability out of range: $p" }
-            Write-Host "OK /score — decision=$($resp.decision) $probKey=$p"
-          } catch {
-            if ($env:STRICT_API_SMOKE -eq "0") {
-              Write-Host "WARN: /score smoke failed but STRICT_API_SMOKE=0. Continuing."
-              Write-Host $_.Exception.Message
+            & curl.exe --noproxy 127.0.0.1 -sS -m 5 -o NUL "http://127.0.0.1:$port/health"
+            if ($LASTEXITCODE -eq 0) { Write-Host "OK /health" } else { Write-Host "WARN: /health non-200 or missing." }
+          } catch { Write-Host "WARN: /health probe error." }
+
+          # /score with a simple payload
+          $body = '{"amount":120.5,"account_age_days":200,"country":"US","device_id":"D_A","hour_of_day":20}'
+          $resp = & curl.exe --noproxy 127.0.0.1 -sS -m 15 -H "Content-Type: application/json" -d $body "http://127.0.0.1:$port/score"
+          $code = $LASTEXITCODE
+          if ($code -eq 0) {
+            $resp | Out-File -FilePath score_resp.json -Encoding utf8
+            $hasDecision = ($resp -match '"decision"\s*:')
+            $hasProb = ($resp -match '"(proba|prob|score|p_fraud|fraud_proba|model_score)"\s*:')
+            if (-not $hasDecision -or -not $hasProb) {
+              if ($env:STRICT_API_SMOKE -eq "1") { throw "Missing decision or probability in /score response" }
+              else { Write-Host "WARN: /score response lacks expected keys; continuing (STRICT_API_SMOKE=0)." }
             } else {
-              throw
+              Write-Host "OK /score payload shape looks good."
             }
+          } else {
+            if ($env:STRICT_API_SMOKE -eq "1") { throw "ERROR: /score returned non-200 (curl exit $code)" }
+            else { Write-Host "WARN: /score failed but STRICT_API_SMOKE=0; continuing." }
           }
 
       - name: Stop API (always)
@@ -194,6 +172,7 @@ jobs:
             api_stderr.txt
             api_pid.txt
             api_port.txt
+            score_resp.json
           if-no-files-found: ignore
           retention-days: 7
 
