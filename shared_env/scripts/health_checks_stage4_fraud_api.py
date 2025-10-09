@@ -2,6 +2,20 @@
 from pathlib import Path
 import json
 import sys
+try:
+    # Python 3.7+: force stdout/stderr to UTF-8 regardless of console code page
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+def safe_print(msg: str):
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        # Fallback: strip characters not representable in the current code page
+        print(msg.encode("ascii", "ignore").decode("ascii"))
+
 
 ROOT = Path(__file__).resolve().parents[2]
 FRAUD = ROOT / "fraud_detection_system"
@@ -32,7 +46,7 @@ def main():
     if not (0.0 < float(thr) < 1.0):
         print(f"❌ threshold out of range: {thr}"); sys.exit(1)
 
-    print("✅ Stage 4 fraud API health checks passed.")
+    safe_print("✅ Stage 4 fraud API health checks passed.")
 
 if __name__ == "__main__":
     main()

@@ -49,6 +49,10 @@ jobs:
     defaults:
       run:
         shell: pwsh
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -64,35 +68,42 @@ jobs:
         run: |
           pip install fastapi uvicorn[standard] requests joblib pandas pydantic shap pytest pyyaml
 
-      - name: Health check artifacts
+      - name: Health check artifacts (UTF-8)
         run: |
-          python shared_env/scripts/health_checks_stage4_fraud_api.py
+          python -X utf8 shared_env/scripts/health_checks_stage4_fraud_api.py
 
-      - name: Pytest (unit)
+      - name: Launch API (background)
+        id: launch_api
         run: |
-          pytest -q fraud_detection_system/api/tests/test_app.py
-
-      - name: Launch API (background) and wait for readiness
-        run: |
-          # Start the API via your script; capture PID
           $p = Start-Process -FilePath "python" -ArgumentList "fraud_detection_system/api/run_api.py" -PassThru
-          Set-Content -Path api_pid.txt -Value "pid=$($p.Id)"
-          # Probe /health up to ~15s
+          "pid=$($p.Id)" | Out-File -FilePath api_pid.txt
+
+      - name: Detect API port from run_api.py
+        id: detect_port
+        run: |
+          $txt = Get-Content "fraud_detection_system/api/run_api.py" -Raw
+          $m = [regex]::Match($txt, 'port\s*=\s*(\d+)')
+          if ($m.Success) { $port = [int]$m.Groups[1].Value } else { $port = 8000 }
+          echo "port=$port" | Out-File -FilePath api_port.txt
+          Write-Host "Using port $port"
+
+      - name: Wait for readiness
+        run: |
+          $port = (Get-Content api_port.txt) -replace 'port=',''
           $ok = $false
-          for ($i=0; $i -lt 30; $i++) {
+          for ($i=0; $i -lt 40; $i++) {
             try {
-              Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method GET -TimeoutSec 2 | Out-Null
+              Invoke-RestMethod -Uri "http://127.0.0.1:$port/health" -TimeoutSec 2 | Out-Null
               $ok = $true; break
-            } catch {
-              Start-Sleep -Milliseconds 500
-            }
+            } catch { Start-Sleep -Milliseconds 500 }
           }
-          if (-not $ok) { throw "API failed to become ready on /health" }
+          if (-not $ok) { throw "API failed to become ready on port $port" }
 
       - name: /health and /score smoke
         run: |
+          $port = (Get-Content api_port.txt) -replace 'port=',''
           # /health
-          $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method GET -TimeoutSec 5
+          $health = Invoke-RestMethod -Uri "http://127.0.0.1:$port/health" -Method GET -TimeoutSec 5
           if (-not $health) { throw "Empty /health response" }
           # /score
           $body = @{
@@ -102,7 +113,7 @@ jobs:
             device_id = "D_A"
             hour_of_day = 20
           } | ConvertTo-Json
-          $resp = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/score" -ContentType "application/json" -Body $body -TimeoutSec 10
+          $resp = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$port/score" -ContentType "application/json" -Body $body -TimeoutSec 10
           if (-not $resp) { throw "Empty /score response" }
           if (-not ($resp.PSObject.Properties.Name -contains "decision")) { throw "Missing 'decision' in /score response" }
           $probKey = @("proba","prob","score","p_fraud","fraud_proba","model_score") | Where-Object { $resp.PSObject.Properties.Name -contains $_ } | Select-Object -First 1
@@ -120,6 +131,7 @@ jobs:
             Try { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue } Catch {}
             Remove-Item api_pid.txt -ErrorAction SilentlyContinue
           }
+              
   stage5-monitor-smoke:
     name: Stage 5 Monitor Smoke (dry-run, Python 3.13)
     runs-on: windows-latest

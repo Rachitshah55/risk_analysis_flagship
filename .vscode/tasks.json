@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "API: Uvicorn (reload)",
+      "label": "API: Uvicorn (reload) [noauto]",
       "type": "shell",
       "command": "${config:python.defaultInterpreterPath} -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
       "options": {
@@ -71,6 +71,46 @@
       "command": "${config:python.defaultInterpreterPath} ${input:scriptPath}",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "focus": true }
+    },
+    {
+      "label": "Servers: Discover & Build Index",
+      "type": "shell",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\shared_env\\scripts\\discover_endpoints.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Servers: Update Index Status",
+      "type": "shell",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\shared_env\\scripts\\generate_server_index.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Servers: Start All",
+      "type": "shell",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\shared_env\\scripts\\launch_all_servers.py", "start"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Servers: Stop All",
+      "type": "shell",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\shared_env\\scripts\\launch_all_servers.py", "stop"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Servers: Status",
+      "type": "shell",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\shared_env\\scripts\\launch_all_servers.py", "status"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
     }
   ],
   "inputs": [
