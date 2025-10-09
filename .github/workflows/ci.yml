@@ -54,9 +54,6 @@ jobs:
       PYTHONUTF8: "1"
       # Keep schema checks lenient while stabilizing. Flip to "1" later to enforce.
       STRICT_API_SMOKE: "0"
-      # Ensure local loopback skips any proxy
-      NO_PROXY: "127.0.0.1,localhost"
-      no_proxy: "127.0.0.1,localhost"
 
     steps:
       - uses: actions/checkout@v4
@@ -86,12 +83,11 @@ jobs:
           "port=$port" | Out-File -FilePath api_port.txt -Encoding ascii
           Write-Host "Using port $port"
 
-      - name: Launch API (uvicorn, no reload) with logs
+      - name: Launch API (background with logs)
         id: launch_api
         run: |
           $env:PYTHONUNBUFFERED = "1"
-          $port = (Get-Content api_port.txt) -replace 'port=',''
-          $args = "-m uvicorn fraud_detection_system.api.app:app --host 127.0.0.1 --port $port --log-level info"
+          $args = "fraud_detection_system/api/run_api.py"
           $p = Start-Process -FilePath "python" -ArgumentList $args -PassThru -NoNewWindow `
                -RedirectStandardOutput api_stdout.txt -RedirectStandardError api_stderr.txt
           "pid=$($p.Id)" | Out-File -FilePath api_pid.txt -Encoding ascii
