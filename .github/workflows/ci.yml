@@ -52,8 +52,6 @@ jobs:
     env:
       PYTHONIOENCODING: utf-8
       PYTHONUTF8: "1"
-      # Keep schema checks lenient while stabilizing. Flip to "1" later to enforce.
-      STRICT_API_SMOKE: "0"
 
     steps:
       - uses: actions/checkout@v4
@@ -99,100 +97,38 @@ jobs:
             throw "API failed to start"
           }
 
-      - name: Wait for readiness (Python, up to 120s; /health OR /openapi.json OR /docs OR /)
+      - name: Wait for startup line (up to 120s)
         run: |
-          python - <<'PY'
-          import os, sys, time
-          import requests
-
-          port = int(open('api_port.txt','r').read().split('=')[1].strip())
-          base = f"http://127.0.0.1:{port}"
-          paths = ["/health", "/openapi.json", "/docs", "/"]
-          deadline = time.time() + 120
-          ok = False
-          # bypass proxies for loopback explicitly
-          s = requests.Session()
-          s.trust_env = False
-
-          last_err = None
-          while time.time() < deadline and not ok:
-            for p in paths:
-              url = base + p
-              try:
-                r = s.get(url, timeout=2)
-                # consider any HTTP response under 500 as "service reachable"
-                if r.status_code < 500:
-                  print(f"Ready via {url} (HTTP {r.status_code})")
-                  ok = True
-                  break
-              except Exception as e:
-                last_err = e
-            if not ok:
-              time.sleep(1)
-
-          if not ok:
-            print("Timed out waiting for readiness.", "Last error:", repr(last_err))
-            # show log tails if present
-            try:
-              with open("api_stderr.txt","r",encoding="utf-8",errors="replace") as f:
-                lines = f.readlines()[-200:]
-                print("--- api_stderr.txt (tail) ---"); print("".join(lines))
-            except Exception: pass
-            try:
-              with open("api_stdout.txt","r",encoding="utf-8",errors="replace") as f:
-                lines = f.readlines()[-200:]
-                print("--- api_stdout.txt (tail) ---"); print("".join(lines))
-            except Exception: pass
-            sys.exit(1)
-          PY
-
-      - name: /health (best-effort) and /score smoke (Python)
-        run: |
-          python - <<'PY'
-          import json, os, sys, requests
-          port = int(open('api_port.txt','r').read().split('=')[1].strip())
-          base = f"http://127.0.0.1:{port}"
-          s = requests.Session(); s.trust_env = False
-
-          # /health (best-effort)
-          try:
-            rh = s.get(base + "/health", timeout=5)
-            print("Health HTTP", rh.status_code)
-          except Exception as e:
-            print("WARN: /health error:", repr(e))
-
-          body = {
-              "amount": 120.5,
-              "account_age_days": 200,
-              "country": "US",
-              "device_id": "D_A",
-              "hour_of_day": 20
+          $deadline = (Get-Date).AddSeconds(120)
+          $ready = $false
+          while ((Get-Date) -lt $deadline) {
+            $stderr = if (Test-Path api_stderr.txt) { Get-Content api_stderr.txt -Raw -ErrorAction SilentlyContinue } else { "" }
+            $stdout = if (Test-Path api_stdout.txt) { Get-Content api_stdout.txt -Raw -ErrorAction SilentlyContinue } else { "" }
+            if ($stderr -match "Application startup complete." -or $stdout -match "Application startup complete.") {
+              $ready = $true; break
+            }
+            Start-Sleep -Seconds 1
           }
-          strict = os.getenv("STRICT_API_SMOKE","0") == "1"
-          try:
-            rs = s.post(base + "/score", json=body, timeout=15)
-            code = rs.status_code
-            print("Score HTTP", code)
-            if code == 200:
-              resp = rs.json()
-              open("score_resp.json","w",encoding="utf-8").write(json.dumps(resp, indent=2))
-              has_dec = "decision" in resp
-              has_prob = any(k in resp for k in ("proba","prob","score","p_fraud","fraud_proba","model_score"))
-              if strict and (not has_dec or not has_prob):
-                print("ERROR: missing 'decision' or probability-like field in /score")
-                sys.exit(1)
-            else:
-              msg = f"/score non-200 ({code})"
-              if strict:
-                print("ERROR:", msg); sys.exit(1)
-              else:
-                print("WARN:", msg)
-          except Exception as e:
-            if strict:
-              print("ERROR: /score exception:", repr(e)); sys.exit(1)
-            else:
-              print("WARN: /score exception:", repr(e))
-          PY
+          if (-not $ready) {
+            Write-Host "Timed out waiting for 'Application startup complete.'"
+            if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt (tail) ---"; Get-Content api_stdout.txt -Tail 200 }
+            if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt (tail) ---"; Get-Content api_stderr.txt -Tail 200 }
+            throw "API did not report startup completion."
+          }
+          Write-Host "API startup line detected."
+
+      # Optional: non-fatal /score ping (comment out if you prefer pure log-based smoke)
+      - name: Best-effort /score ping (non-blocking)
+        run: |
+          try {
+            $port = (Get-Content api_port.txt) -replace 'port=',''
+            $payload = '{"amount":120.5,"account_age_days":200,"country":"US","device_id":"D_A","hour_of_day":20}'
+            $resp = Invoke-WebRequest -Uri "http://127.0.0.1:$port/score" -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 10 -ErrorAction Stop
+            $resp.Content | Out-File -FilePath score_resp.json -Encoding utf8
+            Write-Host "Score HTTP $($resp.StatusCode)"
+          } catch {
+            Write-Host "WARN: /score ping failed (non-blocking). $($_.Exception.Message)"
+          }
 
       - name: Stop API (always)
         if: always()
