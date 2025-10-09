@@ -72,32 +72,60 @@ jobs:
         run: |
           python -X utf8 shared_env/scripts/health_checks_stage4_fraud_api.py
 
-      - name: Launch API (background)
+      - name: Launch API (background with logs)
         id: launch_api
         run: |
-          $p = Start-Process -FilePath "python" -ArgumentList "fraud_detection_system/api/run_api.py" -PassThru
-          "pid=$($p.Id)" | Out-File -FilePath api_pid.txt
+          $env:PYTHONUNBUFFERED = "1"
+          $args = "fraud_detection_system/api/run_api.py"
+          $p = Start-Process -FilePath "python" -ArgumentList $args -PassThru -NoNewWindow `
+                -RedirectStandardOutput api_stdout.txt -RedirectStandardError api_stderr.txt
+          "pid=$($p.Id)" | Out-File -FilePath api_pid.txt -Encoding ascii
+          Start-Sleep -Seconds 1
+          if ($p.HasExited) {
+            Write-Host "API process exited early with code $($p.ExitCode)"
+            if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt ---"; Get-Content api_stdout.txt }
+            if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt ---"; Get-Content api_stderr.txt }
+            throw "API failed to start"
+          }
 
-      - name: Detect API port from run_api.py
+      - name: Detect API port from run_api.py (default 8001)
         id: detect_port
         run: |
           $txt = Get-Content "fraud_detection_system/api/run_api.py" -Raw
           $m = [regex]::Match($txt, 'port\s*=\s*(\d+)')
-          if ($m.Success) { $port = [int]$m.Groups[1].Value } else { $port = 8000 }
-          echo "port=$port" | Out-File -FilePath api_port.txt
+          if ($m.Success) { $port = [int]$m.Groups[1].Value } else { $port = 8001 }
+          "port=$port" | Out-File -FilePath api_port.txt -Encoding ascii
           Write-Host "Using port $port"
 
-      - name: Wait for readiness
+      - name: Wait for readiness (up to 90s)
         run: |
+          $apiPid = ((Get-Content api_pid.txt) -replace 'pid=','')
           $port = (Get-Content api_port.txt) -replace 'port=',''
           $ok = $false
-          for ($i=0; $i -lt 40; $i++) {
+          for ($i=0; $i -lt 90; $i++) {
             try {
               Invoke-RestMethod -Uri "http://127.0.0.1:$port/health" -TimeoutSec 2 | Out-Null
               $ok = $true; break
-            } catch { Start-Sleep -Milliseconds 500 }
+            } catch {
+              # If the process died, dump logs and fail fast
+              try {
+                $proc = Get-Process -Id $apiPid -ErrorAction SilentlyContinue
+                if (-not $proc) {
+                  Write-Host "API process ended while waiting."
+                  if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt ---"; Get-Content api_stdout.txt }
+                  if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt ---"; Get-Content api_stderr.txt }
+                  throw "API terminated before readiness."
+                }
+              } catch {}
+              Start-Sleep -Seconds 1
+            }
           }
-          if (-not $ok) { throw "API failed to become ready on port $port" }
+          if (-not $ok) {
+            Write-Host "Timed out waiting for /health on port $port"
+            if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt ---"; Get-Content api_stdout.txt }
+            if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt ---"; Get-Content api_stderr.txt }
+            throw "API failed to become ready on port $port"
+          }
 
       - name: /health and /score smoke
         run: |
@@ -120,17 +148,19 @@ jobs:
           if (-not $probKey) { throw "Missing probability-like key in /score response" }
           $p = [double]$resp.$probKey
           if ($p -lt 0 -or $p -gt 1) { throw "Probability out of range: $p" }
-          Write-Host "✅ /score OK — decision=$($resp.decision) $probKey=$p"
+          Write-Host "OK /score — decision=$($resp.decision) $probKey=$p"
 
-      - name: Stop API
+      - name: Stop API (always)
         if: always()
         run: |
           if (Test-Path api_pid.txt) {
-            $pidLine = Get-Content api_pid.txt | Select-Object -First 1
-            $pid = ($pidLine -split "=")[1]
-            Try { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue } Catch {}
+            $apiPid = ((Get-Content api_pid.txt) -replace 'pid=','')
+            Try { Stop-Process -Id $apiPid -Force -ErrorAction SilentlyContinue } Catch {}
             Remove-Item api_pid.txt -ErrorAction SilentlyContinue
           }
+          if (Test-Path api_stdout.txt) { Write-Host "--- api_stdout.txt (tail) ---"; Get-Content api_stdout.txt -Tail 200 }
+          if (Test-Path api_stderr.txt) { Write-Host "--- api_stderr.txt (tail) ---"; Get-Content api_stderr.txt -Tail 200 }
+
               
   stage5-monitor-smoke:
     name: Stage 5 Monitor Smoke (dry-run, Python 3.13)
