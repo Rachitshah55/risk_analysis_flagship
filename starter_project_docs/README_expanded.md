@@ -1,5 +1,19 @@
 # Risk Analytics Flagship Projects (Expanded)
 
+# PROJECT-FACTS (authoritative; single source of truth)
+last_updated: 2025-10-10T00:00:00Z
+credit:
+  reporting_primary: daily         # daily is the source; monthly is derived EOM roll-up
+  monthly_rollup: true
+fraud:
+  stage6: retrain_shadow_ab        # retrain + shadow/A-B + MLflow promotion
+  stage7: daily_ops_reporting
+stages_status:
+  credit: {2: done, 3: done, 4: done, 5: done, 6: in_progress, 7: todo, 8: todo}
+  fraud:  {2: done, 3: done, 4: done, 5: done, 6: todo, 7: todo, 8: todo, 9: todo}
+
+
+
 This repository contains detailed, long-form documentation for two flagship projects — **Credit Risk Scoring Model** and **Fraud Detection System** — along with shared foundations.  
 These expanded files provide in-depth methodology, examples, automation details, governance practices, and portfolio-ready narratives.
 

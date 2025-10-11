@@ -14,6 +14,98 @@
       "presentation": { "reveal": "always", "focus": true }
     },
     {
+      "label": "Daily: CREDIT full chain (S5 → S4 → S6)",
+      "type": "shell",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": [
+        "C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/run_credit_daily_full.py"
+      ],
+      "options": {
+        "cwd": "C:/DevProjects/risk_analysis_flagship",
+        "env": {
+          "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Credit: Stage 4 — Batch Scoring (smart)",
+      "type": "shell",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": [
+        "C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/run_credit_daily_full.py"
+      ],
+      "options": {
+        "cwd": "C:/DevProjects/risk_analysis_flagship"
+      },
+      "problemMatcher": [],
+      "detail": "Runs only Stage 4 via smart wrapper? Use with --skip flags if you add them later."
+    },
+    {
+      "label": "Shared: Run Stage 5 Credit Monitor (Today)",
+      "type": "shell",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": [
+        "C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/monitor_credit_drift.py"
+      ],
+      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Credit: Daily Report (Stage 6)",
+      "type": "shell",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": [
+        "C:/DevProjects/risk_analysis_flagship/credit_scoring_system/reports/run_daily_credit_report.py"
+      ],
+      "options": {
+        "cwd": "C:/DevProjects/risk_analysis_flagship",
+        "env": {
+          "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Credit: Stage 6 — Monthly Roll-up (auto YYYY-MM)",
+      "type": "shell",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": [
+        "C:/DevProjects/risk_analysis_flagship/credit_scoring_system/reports/rollup_month_credit_reports.py"
+      ],
+      "options": {
+        "cwd": "C:/DevProjects/risk_analysis_flagship",
+        "env": {
+          "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Open: This Month's Credit Summary",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$m=(Get-Date).ToString('yyyy-MM'); Start-Process \"C:/DevProjects/risk_analysis_flagship/docs_global/reports/credit/$m/credit_monthly_summary.html\""
+      ],
+      "problemMatcher": []
+    },    
+    {
+      "label": "Open: Today’s Credit Daily Report",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$d=(Get-Date).ToString('yyyy-MM-dd');",
+        "Start-Process",
+        "C:/DevProjects/risk_analysis_flagship/docs_global/reports/credit/$d/credit_daily_report.html"
+      ],
+      "problemMatcher": []
+    },
+    {
       "label": "Fraud API (reload)",
       "type": "process",
       "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",

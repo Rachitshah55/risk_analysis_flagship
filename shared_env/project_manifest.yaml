@@ -1,0 +1,16 @@
+version: 1
+cadence:
+  credit:
+    reporting: daily        # primary
+    monthly_rollup: true    # derived summary only
+  fraud:
+    retraining: on_trigger  # Stage 6
+    reporting: stage7_daily_ops
+stages_status:
+  credit: {2: done, 3: done, 4: done, 5: done, 6: in_progress, 7: todo, 8: todo}
+  fraud:  {2: done, 3: done, 4: done, 5: done, 6: todo, 7: todo, 8: todo, 9: todo}
+paths:
+  credit_daily_reports: docs_global/reports/credit/{YYYY-MM-DD}/
+  credit_monthly_summary: docs_global/reports/credit/{YYYY-MM}/
+authoritative_flags:
+  credit_monthly_is_primary: false
