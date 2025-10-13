@@ -1,11 +1,11 @@
 {
-  "avg_pd_today": null,
-  "el_total_today": null,
-  "max_psi_today": 0.0,
+  "avg_pd_today": 0.6716079552620839,
+  "el_total_today": 220996.91112728073,
+  "max_psi_today": 13.815488532149551,
   "trailing_avg_pd": 0.7057975522005585,
-  "trailing_avg_el": null,
+  "trailing_avg_el": 234408.43309511244,
   "trailing_mean_psi": 0.0,
   "trailing_max_psi": 0.0,
-  "delta_el_vs_7d": null,
-  "delta_pd_vs_7d": null
+  "delta_el_vs_7d": -13411.521967831708,
+  "delta_pd_vs_7d": -0.034189596938474565
 }

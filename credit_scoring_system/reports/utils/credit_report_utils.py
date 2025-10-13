@@ -56,9 +56,39 @@ def load_daily(day: str | None = None) -> dict:
     if seg_parquet is not None:
         try:
             seg = pd.read_parquet(seg_parquet)
-            el_col = next((c for c in seg.columns if str(c).lower() in {"el", "expected_loss"}), None)
+
+            # Find a reasonable EL column
+            cols = [c for c in seg.columns]
+            lower = {c: str(c).lower() for c in cols}
+
+            # Priority list of patterns to match
+            def pick_el_col():
+                # exact matches first
+                for target in ("el", "expected_loss"):
+                    for c in cols:
+                        if lower[c] == target:
+                            return c
+                # contains patterns next
+                for needle in ("el_total", "total_el", "expectedloss", "expected_loss", "loss"):
+                    for c in cols:
+                        if needle in lower[c]:
+                            return c
+                # last resort: any column named 'el*'
+                for c in cols:
+                    if lower[c].startswith("el"):
+                        return c
+                return None
+
+            el_col = pick_el_col()
+
             if el_col:
-                out["el_total"] = float(pd.to_numeric(seg[el_col], errors="coerce").dropna().sum())
+                # Coerce to numeric safely (handles strings with commas/spaces)
+                series = seg[el_col]
+                if series.dtype == "O":
+                    series = series.astype(str).str.replace(",", "", regex=False).str.replace(" ", "", regex=False)
+                series = pd.to_numeric(series, errors="coerce")
+                out["el_total"] = float(series.dropna().sum())
+
             out["el_by_segment_df"] = seg
         except Exception:
             pass

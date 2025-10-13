@@ -76,7 +76,7 @@ def main(day: str | None = None, to_pdf: bool = False, verbose: bool = True, log
         print("[Stage6] Note: the following KPIs are None →", missing)
         print("         Ensure these files exist for today:")
         print("         - credit_scoring_system\\outputs\\scoring\\pd_scores_YYYYMMDD.parquet  (must have 'pd')")
-        print("         - credit_scoring_system\\outputs\\scoring\\segment_rollups_YYYYMMDD.parquet  (must have 'EL'/'expected_loss')")
+        print("         - credit_scoring_system\\outputs\\scoring\\segment_rollups_YYYYMMDD.parquet  (EL column tolerant: el/expected_loss/el_total)")
 
 
     # 2) Persist KPIs (used by monthly roll-up)

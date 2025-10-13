@@ -1,12 +1,16 @@
 # ===== BEGIN: score_credit_portfolio.py =====
 from __future__ import annotations
-import os, sys, json, glob, math, warnings
+import os, sys, json, glob, math, warnings, mlflow
 from pathlib import Path
 from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 from typing import List, Optional, Tuple
 import joblib
+
+PROJECT_ROOT = Path(r"C:\DevProjects\risk_analysis_flagship")
+mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", f"file:///{(PROJECT_ROOT / 'mlruns').as_posix()}"))
+mlflow.set_experiment("credit_stage4_scoring")
 
 # Optional deps
 try:

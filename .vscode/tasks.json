@@ -29,17 +29,25 @@
       "problemMatcher": []
     },
     {
-      "label": "Credit: Stage 4 — Batch Scoring (smart)",
+      "label": "Credit: Stage 4 — Batch Scoring",
       "type": "shell",
       "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
       "args": [
-        "C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/run_credit_daily_full.py"
+        "C:/DevProjects/risk_analysis_flagship/credit_scoring_system/scripts/score_credit_portfolio.py"
       ],
-      "options": {
-        "cwd": "C:/DevProjects/risk_analysis_flagship"
-      },
-      "problemMatcher": [],
-      "detail": "Runs only Stage 4 via smart wrapper? Use with --skip flags if you add them later."
+      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Open: Latest Credit Daily Report",
+      "type": "shell",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": [
+        "C:/DevProjects/risk_analysis_flagship/tools/open_credit_report.py",
+        "--latest"
+      ],
+      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "problemMatcher": []
     },
     {
       "label": "Shared: Run Stage 5 Credit Monitor (Today)",
@@ -95,14 +103,11 @@
     {
       "label": "Open: Today’s Credit Daily Report",
       "type": "shell",
-      "command": "powershell",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
       "args": [
-        "-NoProfile",
-        "-Command",
-        "$d=(Get-Date).ToString('yyyy-MM-dd');",
-        "Start-Process",
-        "C:/DevProjects/risk_analysis_flagship/docs_global/reports/credit/$d/credit_daily_report.html"
+        "C:/DevProjects/risk_analysis_flagship/tools/open_credit_report.py"
       ],
+      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
       "problemMatcher": []
     },
     {
@@ -116,16 +121,16 @@
       "problemMatcher": []
     },
     {
-      "label": "MLflow: UI",
+      "label": "MLflow: UI (project mlruns)",
       "type": "shell",
-      "command": "${config:python.defaultInterpreterPath} -m mlflow ui --port 5000",
-      "options": {
-        "env": {
-          "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
-        }
-      },
-      "problemMatcher": [],
-      "presentation": { "reveal": "always", "focus": true }
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": [
+        "-m", "mlflow", "ui",
+        "--port", "5000",
+        "--backend-store-uri", "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
+      ],
+      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "problemMatcher": []
     },
     {
       "label": "Prefect: run flow.py",

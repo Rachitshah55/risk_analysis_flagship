@@ -1,0 +1,9 @@
+DRIFT ALERT (PSI >= 0.25)
+
+Top offenders:
+     feature       psi
+          pd 13.815489
+          PD 13.815489
+          EL 13.815489
+         EAD  0.000000
+vintage_year  0.000000
