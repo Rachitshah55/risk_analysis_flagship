@@ -105,8 +105,13 @@ def _load_dataframe(label_col: str | None) -> tuple[pd.DataFrame, str, str]:
 
 
 def _onehot_encoder():
-    # Use sparse=False for broad compatibility with sklearn versions
-    return OneHotEncoder(handle_unknown="ignore", sparse=False)
+       from sklearn.preprocessing import OneHotEncoder
+       try:
+           # scikit-learn >= 1.2
+           return OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+       except TypeError:
+           # scikit-learn < 1.2
+           return OneHotEncoder(handle_unknown="ignore", sparse=False)
 
 
 def main():
