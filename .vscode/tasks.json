@@ -163,6 +163,30 @@
       "problemMatcher": []
     },
     {
+      "label": "Fraud: Daily Monitor",
+      "type": "process",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": ["C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/monitor_fraud_api_logs.py"],
+      "options": {"cwd": "C:/DevProjects/risk_analysis_flagship"},
+      "problemMatcher": []
+    },
+    {
+      "label": "Fraud: A/B Evaluate (manual)",
+      "type": "process",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": ["C:/DevProjects/risk_analysis_flagship/fraud_detection_system/analysis/evaluate_ab_and_promote.py"],
+      "options": {"cwd": "C:/DevProjects/risk_analysis_flagship"},
+      "problemMatcher": []
+    },
+    {
+      "label": "Fraud: Daily Full Chain",
+      "type": "process",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": ["C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/run_fraud_daily_full.py"],
+      "options": {"cwd": "C:/DevProjects/risk_analysis_flagship"},
+      "problemMatcher": []
+    },
+    {
       "label": "Python: run script (prompt)",
       "type": "shell",
       "command": "${config:python.defaultInterpreterPath} ${input:scriptPath}",

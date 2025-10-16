@@ -1,0 +1,8 @@
+{
+  "run_name": "fraud_candidate_20251014",
+  "data_source": "training_labeled",
+  "label_column": "is_chargeback",
+  "ap_val": 0.16666666666666666,
+  "thr_selected": 0.12488396465778351,
+  "timestamp": "20251014"
+}

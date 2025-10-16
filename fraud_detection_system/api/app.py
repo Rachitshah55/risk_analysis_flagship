@@ -1,12 +1,13 @@
-# ===== BEGIN: app.py (Stage 6 - Shadow Mode) =====
+# ===== BEGIN: app.py (Stage 6 - PROD pointer + Shadow + A/B) =====
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import joblib
 import pandas as pd
@@ -21,19 +22,15 @@ except Exception:
     _HAS_SHAP = False
 
 # --- Paths (repo-root aware) ---
-# .../risk_analysis_flagship
 ROOT = Path(__file__).resolve().parents[2]
 FRAUD_ROOT = ROOT / "fraud_detection_system"
 MODELS_DIR = FRAUD_ROOT / "models"
+PROD_POINTER = MODELS_DIR / "PROD_POINTER.txt"
 RULES_PATH = FRAUD_ROOT / "rules" / "rules_v1.yml"
 LOGS_DIR = FRAUD_ROOT / "api" / "logs"
 
 # ---------- .env support (root .env and/or shared_env/.env) ----------
 def _load_dotenv_if_present() -> None:
-    """
-    Minimal .env loader: reads KEY=VALUE pairs from root .env and shared_env/.env.
-    Existing environment variables are not overwritten.
-    """
     for env_path in [ROOT / ".env", ROOT / "shared_env" / ".env"]:
         if env_path.exists():
             for line in env_path.read_text(encoding="utf-8").splitlines():
@@ -47,16 +44,44 @@ def _load_dotenv_if_present() -> None:
 _load_dotenv_if_present()
 
 # ---------- Utilities ----------
-def _latest_model_dir() -> Path:
-    """Pick most-recent fraud_* directory under models/ for PRODUCTION."""
-    cands = [p for p in MODELS_DIR.glob("fraud_*") if p.is_dir()]
+def _glob_model_dirs() -> List[Path]:
+    """Return model candidate dirs (supports fraud_* and CAND_*)."""
+    if not MODELS_DIR.exists():
+        return []
+    # Keep only directories that look like model drops
+    cands = [p for p in MODELS_DIR.iterdir() if p.is_dir() and (p.name.startswith("fraud_") or p.name.startswith("CAND_"))]
+    # Ensure they contain a model file
+    cands = [p for p in cands if (p / "xgb_model.joblib").exists()]
+    return cands
+
+def _resolve_prod_dir() -> Tuple[Path, str]:
+    """
+    Decide which dir is PRODUCTION:
+      1) If PROD_POINTER.txt exists and points to a valid dir (absolute or relative), use it. source="pointer".
+      2) Else fallback to newest candidate dir under models/. source="latest".
+    Returns: (path, source_label)
+    """
+    # 1) Pointer
+    try:
+        if PROD_POINTER.exists():
+            raw = PROD_POINTER.read_text(encoding="utf-8").strip()
+            if raw:
+                p = Path(raw)
+                if not p.is_absolute():
+                    p = (MODELS_DIR / p).resolve()
+                if p.exists() and p.is_dir() and (p / "xgb_model.joblib").exists():
+                    return p, "pointer"
+    except Exception:
+        pass
+    # 2) Fallback: newest valid model dir
+    cands = _glob_model_dirs()
     if not cands:
-        raise FileNotFoundError("No fraud_* model directories found under models/.")
-    return max(cands, key=lambda p: p.stat().st_mtime)
+        raise FileNotFoundError("No model directories found (fraud_* or CAND_*) with xgb_model.joblib.")
+    best = max(cands, key=lambda d: (d / "xgb_model.joblib").stat().st_mtime)
+    return best.resolve(), "latest"
 
 def _load_rules(path: Path) -> List[Dict[str, Any]]:
-    """Load YAML rules list."""
-    import yaml  # local import to keep import-time light
+    import yaml
     if not path.exists():
         return []
     with path.open("r", encoding="utf-8") as f:
@@ -68,9 +93,8 @@ def _load_rules(path: Path) -> List[Dict[str, Any]]:
     return rules
 
 def _apply_rules(tx: Dict[str, Any], rules: List[Dict[str, Any]]) -> List[str]:
-    """Tiny rules engine, sandboxed eval of boolean expressions on tx dict."""
     hits: List[str] = []
-    safe_locals = dict(tx)  # expose fields directly: amount, hour_of_day, etc.
+    safe_locals = dict(tx)
     for rule in rules:
         try:
             cond = rule.get("condition", "")
@@ -87,7 +111,6 @@ class TransactionIn(BaseModel):
     country: str = Field("US", min_length=2, max_length=2)
     device_id: str = Field("unknown")
     hour_of_day: int = Field(12, ge=0, le=23)
-    # Extend as features grow (keep consistent with training features)
 
     @validator("country")
     def _upper_iso(cls, v: str) -> str:
@@ -110,28 +133,40 @@ _THRESHOLD: float = 0.5
 _FEATURES: List[str] = []
 _RULES: List[Dict[str, Any]] = []
 _MODEL_TS = ""
+_PROD_DIR_PATH: Optional[Path] = None
+_PROD_DIR_SOURCE: str = "unknown"
 
 _EXPLAINER = None
 _BG = None
 
-# ---------- Candidate globals for SHADOW mode ----------
-# Loaded if FRAUD_CANDIDATE_DIR is set; decisions still come from PROD in shadow.
+# ---------- Candidate globals ----------
 _CAND = None
 _CAND_THRESHOLD: float = 0.5
 _CAND_FEATURES: List[str] = []
 _CAND_TS = ""
 
 # ---------- Traffic toggle ----------
-# Step 4 uses only 'shadow' (prod decisions; cand scored + logged).
-TRAFFIC_MODE = os.getenv("FRAUD_TRAFFIC_MODE", "prod").lower()  # 'prod' | 'shadow'
+# Modes: 'prod' (default), 'shadow' (prod decides; cand logged), 'ab' (~N% cand decides)
+TRAFFIC_MODE = os.getenv("FRAUD_TRAFFIC_MODE", "prod").lower()
 CAND_DIR_ENV = os.getenv("FRAUD_CANDIDATE_DIR", "").strip()
+try:
+    AB_PERCENT = max(0, min(100, int(os.getenv("FRAUD_AB_PERCENT", "10"))))
+except Exception:
+    AB_PERCENT = 10
+
+def assign_arm(key: str, percent: int) -> str:
+    if not key or percent <= 0:
+        return "prod"
+    bucket = int(hashlib.sha1(key.encode("utf-8")).hexdigest(), 16) % 100
+    return "cand" if bucket < percent else "prod"
 
 # ---------- Model/Explainer loading ----------
 def _load_model_bundle() -> None:
-    """Load latest PROD model, threshold, features, rules; init SHAP if present."""
-    global _MODEL, _THRESHOLD, _FEATURES, _RULES, _MODEL_TS, _EXPLAINER, _BG
+    global _MODEL, _THRESHOLD, _FEATURES, _RULES, _MODEL_TS, _EXPLAINER, _BG, _PROD_DIR_PATH, _PROD_DIR_SOURCE
 
-    mdir = _latest_model_dir()
+    mdir, source = _resolve_prod_dir()
+    _PROD_DIR_PATH, _PROD_DIR_SOURCE = mdir, source
+
     model_path = mdir / "xgb_model.joblib"
     thr_path = mdir / "threshold.json"
     fl_path = mdir / "feature_list.json"
@@ -149,7 +184,6 @@ def _load_model_bundle() -> None:
     else:
         _THRESHOLD = 0.5
 
-    # Features: support list OR {"numeric":[], "categorical":[]}
     if fl_path.exists():
         try:
             fl_obj = json.loads(fl_path.read_text(encoding="utf-8"))
@@ -169,7 +203,6 @@ def _load_model_bundle() -> None:
     _RULES = _load_rules(RULES_PATH)
     _MODEL_TS = datetime.fromtimestamp(model_path.stat().st_mtime).isoformat(timespec="seconds")
 
-    # SHAP (optional)
     if _HAS_SHAP:
         try:
             _BG = pd.DataFrame([{f: 0 for f in _FEATURES}])
@@ -178,7 +211,6 @@ def _load_model_bundle() -> None:
             _EXPLAINER = None
 
 def _load_candidate_bundle(cand_dir: Path) -> None:
-    """Load candidate model & metadata for SHADOW scoring (no decisions)."""
     global _CAND, _CAND_THRESHOLD, _CAND_FEATURES, _CAND_TS
     _CAND = None
     _CAND_THRESHOLD = 0.5
@@ -200,14 +232,12 @@ def _load_candidate_bundle(cand_dir: Path) -> None:
         _CAND = None
         return
 
-    # threshold
     if thr_path.exists():
         try:
             _CAND_THRESHOLD = json.loads(thr_path.read_text(encoding="utf-8")).get("threshold", 0.5)
         except Exception:
             _CAND_THRESHOLD = 0.5
 
-    # features (union of numeric + categorical)
     if fl_path.exists():
         try:
             fl_obj = json.loads(fl_path.read_text(encoding="utf-8"))
@@ -246,18 +276,12 @@ def _top_features(df: pd.DataFrame, k: int = 5) -> Optional[List[Dict[str, Any]]
 
 # ---------- Daily JSONL logging (LOCAL DATE) ----------
 def _write_log(entry: Dict[str, Any]) -> None:
-    """
-    Append one JSON line to today's file, named with LOCAL date: YYYYMMDD.jsonl.
-    """
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     fname = datetime.now().strftime("%Y%m%d") + ".jsonl"
     with (LOGS_DIR / fname).open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 def _write_shadow_log(entry: Dict[str, Any]) -> None:
-    """
-    Append one JSON line to today's SHADOW file: YYYYMMDD_shadow.jsonl
-    """
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     fname = datetime.now().strftime("%Y%m%d") + "_shadow.jsonl"
     with (LOGS_DIR / fname).open("a", encoding="utf-8") as f:
@@ -267,16 +291,18 @@ def _write_shadow_log(entry: Dict[str, Any]) -> None:
 @app.on_event("startup")
 def on_startup() -> None:
     _load_model_bundle()
-    # Load candidate bundle only if requested (SHADOW)
-    if TRAFFIC_MODE == "shadow" and CAND_DIR_ENV:
-        cand_path = Path(CAND_DIR_ENV)
-        _load_candidate_bundle(cand_path)
+    # Load candidate for SHADOW and A/B if provided
+    if TRAFFIC_MODE in ("shadow", "ab") and CAND_DIR_ENV:
+        _load_candidate_bundle(Path(CAND_DIR_ENV))
 
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "traffic_mode": TRAFFIC_MODE,
+        "ab_percent": AB_PERCENT,
+        "prod_dir": str(_PROD_DIR_PATH) if _PROD_DIR_PATH else None,
+        "prod_source": _PROD_DIR_SOURCE,
         "model_timestamp": _MODEL_TS,
         "rules_count": len(_RULES),
         "features_count": len(_FEATURES),
@@ -287,35 +313,65 @@ def health() -> Dict[str, Any]:
 
 @app.post("/score", response_model=ScoreOut)
 def score(payload: TransactionIn) -> ScoreOut:
-    t0 = time.perf_counter()
-
     tx = payload.dict()
-    # 1) Rules
     rules_hit = _apply_rules(tx, _RULES) if _RULES else []
 
-    # 2) PROD model (decision path)
+    # Decide arm
+    arm = "prod"
+    if TRAFFIC_MODE == "ab" and _CAND is not None:
+        arm = assign_arm(tx.get("device_id", ""), AB_PERCENT)
+
+    if arm == "cand":
+        # CANDIDATE DECISION PATH
+        t0 = time.perf_counter()
+        cand_features = _CAND_FEATURES if _CAND_FEATURES else _FEATURES
+        df_cand = _tx_to_frame(tx, cand_features)
+        proba_cand = _predict_proba(_CAND, df_cand)
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        decision_cand = "flag" if (proba_cand >= _CAND_THRESHOLD or len(rules_hit) > 0) else "allow"
+
+        _write_log({
+            "ts": datetime.now().isoformat(timespec="seconds"),
+            "arm": "cand",
+            "tx": tx,
+            "proba": proba_cand,
+            "decision": decision_cand,
+            "rules_hit": rules_hit,
+            "latency_ms": latency_ms,
+            "model_ts": _CAND_TS,
+        })
+
+        return ScoreOut(
+            decision=decision_cand,
+            proba=proba_cand,
+            rules_hit=rules_hit,
+            top_features=None,
+            model_timestamp=_CAND_TS,
+            latency_ms=latency_ms,
+        )
+
+    # PRODUCTION DECISION PATH (default and SHADOW)
+    t0 = time.perf_counter()
     df_prod = _tx_to_frame(tx, _FEATURES)
     proba_prod = _predict_proba(_MODEL, df_prod)
     decision = "flag" if (proba_prod >= _THRESHOLD or len(rules_hit) > 0) else "allow"
     tops = _top_features(df_prod)
+    latency_ms = int((time.perf_counter() - t0) * 1000)
 
-    latency_prod_ms = int((time.perf_counter() - t0) * 1000)
-
-    # 3) Log regular prod record (LOCAL date filename; local timestamp)
     _write_log({
         "ts": datetime.now().isoformat(timespec="seconds"),
+        "arm": "prod",
         "tx": tx,
         "proba": proba_prod,
         "decision": decision,
         "rules_hit": rules_hit,
-        "latency_ms": latency_prod_ms,
+        "latency_ms": latency_ms,
         "model_ts": _MODEL_TS,
     })
 
-    # 4) SHADOW scoring (no decision impact)
+    # If in SHADOW, still do side-by-side recording
     if TRAFFIC_MODE == "shadow" and _CAND is not None:
         t1 = time.perf_counter()
-        # build df using candidate's own feature list (may include country/device_id)
         cand_features = _CAND_FEATURES if _CAND_FEATURES else _FEATURES
         df_cand = _tx_to_frame(tx, cand_features)
         proba_cand = _predict_proba(_CAND, df_cand)
@@ -325,16 +381,9 @@ def score(payload: TransactionIn) -> ScoreOut:
         _write_shadow_log({
             "ts": datetime.now().isoformat(timespec="seconds"),
             "payload": tx,
-            "prod": {
-                "proba": proba_prod,
-                "decision": decision,
-                "rules_hit": rules_hit,
-            },
-            "cand": {
-                "proba": proba_cand,
-                "decision": decision_cand,
-            },
-            "latency_ms": {"prod": latency_prod_ms, "cand": latency_cand_ms},
+            "prod": {"proba": proba_prod, "decision": decision, "rules_hit": rules_hit},
+            "cand": {"proba": proba_cand, "decision": decision_cand},
+            "latency_ms": {"prod": latency_ms, "cand": latency_cand_ms},
             "model_ts": {"prod": _MODEL_TS, "cand": _CAND_TS},
         })
 
@@ -344,6 +393,6 @@ def score(payload: TransactionIn) -> ScoreOut:
         rules_hit=rules_hit,
         top_features=tops,
         model_timestamp=_MODEL_TS,
-        latency_ms=latency_prod_ms,
+        latency_ms=latency_ms,
     )
-# ===== END: app.py (Stage 6 - Shadow Mode) =====
+# ===== END: app.py (Stage 6 - PROD pointer + Shadow + A/B) =====

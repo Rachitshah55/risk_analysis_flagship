@@ -70,27 +70,148 @@ def psi_categorical(ref, cur, eps=1e-6):
 
 def build_evidently_report(ref_df, cur_df, cols, out_html):
     """
-    Generate Evidently HTML drift report (v0.7+ API compatible).
-    Falls back gracefully if metrics or imports fail.
+    Generate drift HTML.
+    1) Try Evidently (if import works).
+    2) Else, render a Plotly-based report with PSI per feature (numeric + categorical).
+    Returns True on success, False otherwise.
     """
+    # --- Try Evidently once (non-fatal) ---
     try:
-        from evidently import Report
-        from evidently.metric_preset import DataDriftPreset
+        from evidently.report import Report  # new API
+        try:
+            from evidently.metric_preset import DataDriftPreset
+        except Exception:
+            from evidently.presets import DataDriftPreset
         rpt = Report(metrics=[DataDriftPreset()])
         rpt.run(reference_data=ref_df[cols], current_data=cur_df[cols])
         rpt.save_html(out_html)
         return True
     except Exception as e:
-        print(f"[WARN] Evidently 0.7+ Report failed: {e}")
-        # minimal fallback: write a simple HTML table
-        try:
-            drift = ref_df[cols].describe().to_html() + cur_df[cols].describe().to_html()
-            with open(out_html, "w", encoding="utf-8") as f:
-                f.write(f"<h2>Fallback Drift Summary</h2>{drift}")
-            return True
-        except Exception as inner:
-            print(f"[WARN] Fallback HTML failed: {inner}")
-            return False
+        pass  # fall through to Plotly path
+
+    # --- Plotly fallback (no Evidently required) ---
+    import math
+    import numpy as np
+    import pandas as pd
+    from io import StringIO
+    import plotly.graph_objs as go
+    from plotly.offline import plot as plot_html
+
+    # Helpers ---------------------------------------------------------------
+    def _psi(p, q):
+        """Population Stability Index for two probability arrays of same length."""
+        p = np.asarray(p, dtype=float)
+        q = np.asarray(q, dtype=float)
+        eps = 1e-10
+        p = np.clip(p, eps, 1.0)
+        q = np.clip(q, eps, 1.0)
+        return float(np.sum((p - q) * np.log(p / q)))
+
+    def _numeric_psi_and_fig(name, ref_s, cur_s, n_bins=10):
+        ref_s = pd.to_numeric(ref_s, errors="coerce").dropna()
+        cur_s = pd.to_numeric(cur_s, errors="coerce").dropna()
+        if ref_s.empty or cur_s.empty:
+            return math.nan, None
+
+        # bin edges from reference quantiles (robust)
+        qs = np.linspace(0, 1, n_bins + 1)
+        edges = np.unique(np.quantile(ref_s, qs))
+        if len(edges) < 3:  # not enough variability
+            edges = np.linspace(ref_s.min(), ref_s.max(), num=min(n_bins + 1, 5))
+
+        ref_counts, _ = np.histogram(ref_s, bins=edges)
+        cur_counts, _ = np.histogram(cur_s, bins=edges)
+        ref_dist = ref_counts / ref_counts.sum() if ref_counts.sum() else np.zeros_like(ref_counts, dtype=float)
+        cur_dist = cur_counts / cur_counts.sum() if cur_counts.sum() else np.zeros_like(cur_counts, dtype=float)
+        psi_val = _psi(ref_dist, cur_dist)
+
+        # bar chart for distributions
+        bin_labels = []
+        for i in range(len(edges) - 1):
+            a, b = edges[i], edges[i + 1]
+            bin_labels.append(f"[{a:.2f}, {b:.2f})" if i < len(edges) - 2 else f"[{a:.2f}, {b:.2f}]")
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(name="Reference", x=bin_labels, y=ref_dist))
+        fig.add_trace(go.Bar(name="Current", x=bin_labels, y=cur_dist))
+        fig.update_layout(
+            barmode="group",
+            title=f"{name} — PSI: {psi_val:.4f}",
+            xaxis_title="Bins",
+            yaxis_title="Probability",
+            margin=dict(l=40, r=20, t=60, b=40),
+        )
+        return psi_val, fig
+
+    def _categorical_psi_and_fig(name, ref_s, cur_s, max_cats=20):
+        ref_s = ref_s.dropna().astype(str)
+        cur_s = cur_s.dropna().astype(str)
+        if ref_s.empty or cur_s.empty:
+            return math.nan, None
+
+        # limit to top categories in reference to keep charts readable
+        topcats = ref_s.value_counts().nlargest(max_cats).index.tolist()
+        cats = sorted(set(topcats) | set(cur_s.unique()))
+        if not cats:
+            return math.nan, None
+
+        ref_counts = ref_s.value_counts().reindex(cats).fillna(0).values
+        cur_counts = cur_s.value_counts().reindex(cats).fillna(0).values
+        ref_dist = ref_counts / ref_counts.sum() if ref_counts.sum() else np.zeros_like(ref_counts, dtype=float)
+        cur_dist = cur_counts / cur_counts.sum() if cur_counts.sum() else np.zeros_like(cur_counts, dtype=float)
+        psi_val = _psi(ref_dist, cur_dist)
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(name="Reference", x=cats, y=ref_dist))
+        fig.add_trace(go.Bar(name="Current", x=cats, y=cur_dist))
+        fig.update_layout(
+            barmode="group",
+            title=f"{name} — PSI: {psi_val:.4f}",
+            xaxis_title="Category",
+            yaxis_title="Probability",
+            margin=dict(l=40, r=20, t=60, b=120),
+            xaxis=dict(tickangle=35),
+        )
+        return psi_val, fig
+
+    # Build summary + figures ----------------------------------------------
+    psi_rows = []
+    figs = []
+    ref_sub = ref_df[cols].copy()
+    cur_sub = cur_df[cols].copy()
+
+    for c in cols:
+        ref_col = ref_sub[c]
+        cur_col = cur_sub[c]
+        if pd.api.types.is_numeric_dtype(ref_col) and pd.api.types.is_numeric_dtype(cur_col):
+            psi_val, fig = _numeric_psi_and_fig(c, ref_col, cur_col)
+        else:
+            psi_val, fig = _categorical_psi_and_fig(c, ref_col, cur_col)
+        psi_rows.append({"feature": c, "psi": None if (psi_val is None or math.isnan(psi_val)) else round(float(psi_val), 6)})
+        if fig is not None:
+            figs.append((c, fig))
+
+    psi_df = pd.DataFrame(psi_rows).sort_values(by="psi", ascending=False, na_position="last")
+
+    # Assemble HTML ---------------------------------------------------------
+    parts = []
+    parts.append("<html><head><meta charset='utf-8'><title>Fraud Drift Report (Plotly)</title></head><body>")
+    parts.append("<h1>Fraud Drift Report (Plotly)</h1>")
+    parts.append("<p><b>Note:</b> This report is generated without Evidently. PSI ≥ 0.25 usually suggests drift.</p>")
+    parts.append(psi_df.to_html(index=False))
+    parts.append("<hr/>")
+
+    for name, fig in figs:
+        parts.append(f"<h3>{name}</h3>")
+        parts.append(plot_html(fig, include_plotlyjs='cdn', output_type='div'))
+
+    parts.append("</body></html>")
+    with open(out_html, "w", encoding="utf-8") as f:
+        f.write("\n".join(parts))
+    return True
+
+
+
 
 
 def load_day(path: Path):
