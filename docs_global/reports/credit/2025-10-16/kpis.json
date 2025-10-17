@@ -1,0 +1,11 @@
+{
+  "avg_pd_today": 0.6716079552620839,
+  "el_total_today": 220996.91112728073,
+  "max_psi_today": 0.0,
+  "trailing_avg_pd": 0.6801553544967026,
+  "trailing_avg_el": 224349.79161923868,
+  "trailing_mean_psi": 2.0723232798224327,
+  "trailing_max_psi": 13.815488532149551,
+  "delta_el_vs_7d": -3352.8804919579416,
+  "delta_pd_vs_7d": -0.008547399234618669
+}

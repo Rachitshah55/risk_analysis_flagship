@@ -2,30 +2,27 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "API: Uvicorn (reload) [noauto]",
-      "type": "shell",
-      "command": "${config:python.defaultInterpreterPath} -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
-      "options": {
-        "env": {
-          "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
-        }
-      },
-      "problemMatcher": [],
-      "presentation": { "reveal": "always", "focus": true }
+      "label": "Orch: Credit Daily Flow (Stage 5→4→6)",
+      "type": "process",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["shared_env/orchestration/flows/credit_daily_flow.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
     },
     {
-      "label": "Daily: CREDIT full chain (S5 → S4 → S6)",
-      "type": "shell",
-      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
-      "args": [
-        "C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/run_credit_daily_full.py"
-      ],
-      "options": {
-        "cwd": "C:/DevProjects/risk_analysis_flagship",
-        "env": {
-          "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns"
-        }
-      },
+      "label": "Orch: Fraud Daily Flow (Stage 5→7)",
+      "type": "process",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["shared_env/orchestration/flows/fraud_daily_flow.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Orch: Monthly Credit Roll-up",
+      "type": "process",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["shared_env/orchestration/flows/monthly_credit_rollup_flow.py"],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
@@ -35,7 +32,7 @@
       "args": [
         "C:/DevProjects/risk_analysis_flagship/credit_scoring_system/scripts/score_credit_portfolio.py"
       ],
-      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
@@ -46,17 +43,7 @@
         "C:/DevProjects/risk_analysis_flagship/tools/open_credit_report.py",
         "--latest"
       ],
-      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
-      "problemMatcher": []
-    },
-    {
-      "label": "Shared: Run Stage 5 Credit Monitor (Today)",
-      "type": "shell",
-      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
-      "args": [
-        "C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/monitor_credit_drift.py"
-      ],
-      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
@@ -90,6 +77,41 @@
       "problemMatcher": []
     },
     {
+      "label": "Fraud: Stage 7 — Daily Report (Today)",
+      "type": "process",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["fraud_detection_system/reports/run_daily_fraud_report.py"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns" }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Open: Today’s Fraud Daily Report",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$d=Get-Date -Format yyyy-MM-dd; Start-Process \"C:/DevProjects/risk_analysis_flagship/docs_global/reports/fraud/$d/fraud_daily_report.html\""
+      ],
+      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "problemMatcher": []
+    },    
+    {
+      "label": "Open: Latest Fraud Daily Report",
+      "type": "shell",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": [
+        "C:/DevProjects/risk_analysis_flagship/tools/open_generic_latest.py",
+        "--root", "C:/DevProjects/risk_analysis_flagship/docs_global/reports/fraud",
+        "--pattern", "fraud_daily_report.html"
+      ],
+      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "problemMatcher": []
+    },
+    {
       "label": "Open: This Month's Credit Summary",
       "type": "shell",
       "command": "powershell",
@@ -98,6 +120,7 @@
         "-Command",
         "$m=(Get-Date).ToString('yyyy-MM'); Start-Process \"C:/DevProjects/risk_analysis_flagship/docs_global/reports/credit/$m/credit_monthly_summary.html\""
       ],
+	  "options": {"cwd": "C:/DevProjects/risk_analysis_flagship"},
       "problemMatcher": []
     },    
     {
@@ -131,23 +154,17 @@
       ],
       "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
       "problemMatcher": []
-    },
-    {
-      "label": "Prefect: run flow.py",
-      "type": "shell",
-      "command": "${config:python.defaultInterpreterPath} ${workspaceFolder}/flow.py",
-      "problemMatcher": [],
-      "presentation": { "reveal": "always", "focus": true }
-    },
+    },   
     {
       "label": "DVC: repro",
       "type": "shell",
       "command": "${config:python.defaultInterpreterPath} -m dvc repro",
+	  "options": {"cwd": "C:/DevProjects/risk_analysis_flagship"},
       "problemMatcher": [],
       "presentation": { "reveal": "always", "focus": true }
     },
     {
-      "label": "Monitoring: Credit (monthly)",
+      "label": "Monitoring: Credit (daily)",
       "type": "shell",
       "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
       "args": ["${workspaceFolder}\\shared_env\\monitoring\\monitor_credit_drift.py"],
@@ -163,26 +180,10 @@
       "problemMatcher": []
     },
     {
-      "label": "Fraud: Daily Monitor",
-      "type": "process",
-      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
-      "args": ["C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/monitor_fraud_api_logs.py"],
-      "options": {"cwd": "C:/DevProjects/risk_analysis_flagship"},
-      "problemMatcher": []
-    },
-    {
       "label": "Fraud: A/B Evaluate (manual)",
       "type": "process",
       "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
       "args": ["C:/DevProjects/risk_analysis_flagship/fraud_detection_system/analysis/evaluate_ab_and_promote.py"],
-      "options": {"cwd": "C:/DevProjects/risk_analysis_flagship"},
-      "problemMatcher": []
-    },
-    {
-      "label": "Fraud: Daily Full Chain",
-      "type": "process",
-      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
-      "args": ["C:/DevProjects/risk_analysis_flagship/shared_env/monitoring/run_fraud_daily_full.py"],
       "options": {"cwd": "C:/DevProjects/risk_analysis_flagship"},
       "problemMatcher": []
     },

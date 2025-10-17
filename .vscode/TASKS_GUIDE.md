@@ -1,64 +1,124 @@
-# VS Code Tasks — Guide & Index
+# VS Code Tasks — Guide & Index (Stage 7, Revised)
 
 **Root:** `C:\DevProjects\risk_analysis_flagship`  
 **Interpreter:** `.venv\Scripts\python.exe`  
 **MLflow store:** `file:///C:/DevProjects/risk_analysis_flagship/mlruns`
 
----
-
-## 🔰 Daily Starter Pack (run in this order)
-1. **Daily: CREDIT full chain (S5 → S4 → S6)**  
-   Runs Stage 5 monitor → Stage 4 batch scoring → Stage 6 daily report (HTML) and logs MLflow.
-2. **Open: Today’s Credit Daily Report**  ← *opens today’s HTML in your browser*  
-3. **MLflow: UI (project mlruns)**  ← *opens UI on the same local store the runs write to*
-
-> Tip: if you’re reviewing yesterday/today, use **Open: Latest Credit Daily Report**.
+> This replaces the older “Daily Starter Pack” based on the legacy *Daily: CREDIT full chain* and aligns with your new **Orch** flows. (Old structure for reference: Daily Starter Pack in previous guide lines 9–15. :contentReference[oaicite:0]{index=0})
 
 ---
 
-## 🗓 EOM / On-Demand
-- **Credit: Stage 6 — Monthly Roll-up (auto YYYY-MM)**  
-  Aggregates daily reports → writes `docs_global\reports\credit\YYYY-MM\credit_monthly_summary.html`
-  and logs MLflow (`credit_stage6_monthly_rollup`).
+## 🔰 Daily Task + Success Criteria (run in this order)
+
+### A) Kick off
+1) **Orch: Credit Daily Flow (Stage 5→4→6)**  
+   End-to-end for credit (monitor→score→daily report).  
+   *Success:*  
+   - `docs_global\monitoring\credit\YYYY-MM-DD\` folder created for today  
+   - `credit_scoring_system\outputs\scoring\pd_scores_YYYYMMDD.parquet` exists  
+   - `docs_global\reports\credit\YYYY-MM-DD\credit_daily_report.html` exists  
+   - MLflow shows today’s runs for monitoring, scoring, and daily report
+
+2) **Orch: Fraud Daily Flow (Stage 5→7)**  
+   Runs fraud monitoring + (when implemented) daily fraud report.  
+   *Success:*  
+   - `docs_global\monitoring\fraud\YYYY-MM-DD\` folder created for today  
+   - (If report exists) `docs_global\reports\fraud\YYYY-MM-DD\fraud_daily_report.html` exists  
+   - MLflow shows today’s fraud monitoring (and report, when available)
+
+3) **Open: Today’s Credit Daily Report**  
+   Opens today’s HTML to visually confirm KPIs and charts render cleanly.
+
+4) **MLflow: UI (project mlruns)**  
+   Open MLflow at port **5000** and confirm runs landed in the right experiments.
+
+> References to these tasks in your current `tasks.json`:  
+> Orch: Credit Daily Flow (lines show label/command). :contentReference[oaicite:1]{index=1}  
+> Orch: Fraud Daily Flow (lines show label/command). :contentReference[oaicite:2]{index=2}  
+> MLflow: UI (port, backend store). :contentReference[oaicite:3]{index=3}
+
+5) **Fraud: Stage 7 — Daily Report (Today)**
+  Success:
+> docs_global\reports\fraud\YYYY-MM-DD\kpis.json exists
+> docs_global\reports\fraud\YYYY-MM-DD\fraud_daily_report.html opens cleanly
+> MLflow experiment fraud_stage7_daily_reporting has today’s run with metrics + artifacts
+> If A/B is active: table shows arm=prod|cand with per-arm flagged%
+
+---
+
+### B) If anything fails (surgical reruns)
+- **Monitoring: Credit (daily)** → re-run Stage-5 credit monitor  
+- **Credit: Stage 4 — Batch Scoring** → re-build today’s PD/rollups  
+- **Credit: Daily Report (Stage 6)** → re-render today’s HTML  
+- **Monitoring: Fraud (daily)** → re-run fraud monitor  
+- **Open: Latest Credit Daily Report** → view newest daily HTML (today or latest)
+
+*(Older guide sections for single steps and utilities are still relevant, now reorganized under the new Orch flows. Previous single-step descriptions: lines 28–35. :contentReference[oaicite:4]{index=4})*
+
+---
+
+## 🗓 End-of-Month / On-Demand
+
+- **Orch: Monthly Credit Roll-up**  
+  Writes: `docs_global\reports\credit\YYYY-MM\credit_monthly_summary.html`  
 - **Open: This Month's Credit Summary**  
-  Opens the monthly summary HTML for the current month.
+  Opens the month’s summary HTML for a quick check.
+
+*(Older wording about EOM outputs for context: lines 19–24. :contentReference[oaicite:5]{index=5})*
 
 ---
 
-## ⚙️ Individual Steps / Utilities
-- **Shared: Run Stage 5 Credit Monitor (Today)** — Produces `docs_global\monitoring\credit\YYYY-MM-DD\…` (required for Stage 6).
-- **Credit: Stage 4 — Batch Scoring** — Produces:
-  - `credit_scoring_system\outputs\scoring\pd_scores_YYYYMMDD.parquet` (must contain `pd`)
-  - `credit_scoring_system\outputs\scoring\segment_rollups_YYYYMMDD.parquet` (must contain `EL` / `expected_loss`)
-- **Credit: Stage 6 — Daily Report (Today)** — Renders the notebook and logs `credit_stage6_daily_reporting`.
-- **Open: Latest Credit Daily Report**  ← *opens newest daily HTML without thinking about the date*
-- **MLflow: UI (project mlruns)** — MLflow UI pinned to the repo’s `mlruns` store.
+## ⚙️ Services & Utilities
 
-**Other helpers** (leave as-is unless you need them)
-- **Fraud API (reload)** — dev server on port 8001.
-- **Servers: Start/Stop/Status** — local services helpers.
-- **DVC: repro** — rebuild DVC pipeline.
-- **Prefect: run flow.py** — dev-only flow runner.
+- **Fraud API (reload)** → Dev server for real-time scoring during manual tests. :contentReference[oaicite:6]{index=6}  
+- **Servers: Discover & Build Index / Update Index Status / Start All / Stop All / Status** → Local services helpers (index, lifecycle). :contentReference[oaicite:7]{index=7}  
+- **DVC: repro** → Rebuild DVC pipeline (when you change data or stages). :contentReference[oaicite:8]{index=8}  
+- **Python: run script (prompt)** → Ad-hoc runner for one-off scripts.
 
 ---
 
-## 🔎 Notes / Conventions
-- All tasks assume the venv at `.venv\Scripts\python.exe`.
-- MLflow UI should always use the repo’s `mlruns` store so runs appear immediately.
-- Stage 6 relies on Stage 5 outputs for **today**; Stage 4 fills PD/EL KPIs (optional but recommended).
-- Daily report HTML path pattern:
-  `docs_global\reports\credit\YYYY-MM-DD\credit_daily_report.html`
+## 📋 Daily Pre-Build Checklist (copy/pin this in your notes)
+
+- [ ] Ran **Orch: Credit Daily Flow** successfully (see “Success” bullets above)  
+- [ ] Ran **Orch: Fraud Daily Flow** successfully  
+- [ ] Opened **Today’s Credit Daily Report** and verified:
+      - KPIs render; no missing charts or “N/A” sections  
+      - Date/time stamp matches today; sample size > 0  
+- [ ] MLflow UI shows **today’s** runs:
+      - Credit monitoring, scoring, daily reporting  
+      - Fraud monitoring (and report when implemented)  
+- [ ] Disk snapshots in expected folders for **today** (credit & fraud monitoring, credit report)  
+- [ ] If any red flags/drift alerts appear → create a quick note and re-run the precise single-step task (monitor/score/report) before coding
 
 ---
 
-## 🧾 Change Log (who/when/why)
-- **2025-10-13**
-  - Added **Open: Today’s Credit Daily Report** (Python helper, no PowerShell quoting issues).
-  - Added **Open: Latest Credit Daily Report** (opens newest day automatically).
-- **2025-10-12**
-  - Fixed **Daily full chain** to detect `score_credit_portfolio.py` for Stage 4.
-  - Hardened EL parsing in Stage 6 to accept `EL`, `expected_loss`, `el_total`, and string values with commas.
-  - Pinned **MLflow: UI (project mlruns)** task to the venv Python and explicit backend store.
-- **2025-10-10**
-  - Added Stage 6 daily report + monthly roll-up tasks.
-  - Initial Daily Starter Pack and Stage 5 monitor task.
+## 🧪 Troubleshooting Q&A (quick)
+
+**Q1: Flow failed with a path error**  
+Check that you’re running from the repo root and the *Orch* tasks have `cwd` set to `${workspaceFolder}` (as in your tasks). :contentReference[oaicite:9]{index=9}
+
+**Q2: MLflow shows nothing for today**  
+Launch **MLflow: UI (project mlruns)** and confirm it points to your repo `mlruns` store (port 5000, backend store URI). :contentReference[oaicite:10]{index=10}
+
+**Q3: HTML opened but sections look empty**  
+Re-run **Credit: Stage 4 — Batch Scoring** then **Credit: Daily Report (Stage 6)** to regenerate KPIs from the latest scores.
+
+---
+
+## 🔎 Notes / Conventions (unchanged)
+
+- All tasks assume the venv at `.venv\Scripts\python.exe`. :contentReference[oaicite:11]{index=11}  
+- Daily credit HTML path pattern:  
+  `docs_global\reports\credit\YYYY-MM-DD\credit_daily_report.html` :contentReference[oaicite:12]{index=12}
+
+---
+
+## 🧾 Change Log
+
+- **2025-10-16**  
+  - Replaced legacy “Daily full chain” with **Orch: Credit Daily Flow** and added **Orch: Fraud Daily Flow** as the morning entry points.  
+  - Introduced **Daily Task + Success Criteria** section to gate daily build work.  
+  - Consolidated single-step tasks under “If anything fails (surgical reruns)”.
+
+- **2025-10-13 ~ 2025-10-10 (legacy guide for context)**  
+  Earlier guide listed the legacy daily chain and single-steps (now superseded by Orch flows). :contentReference[oaicite:13]{index=13} :contentReference[oaicite:14]{index=14}
