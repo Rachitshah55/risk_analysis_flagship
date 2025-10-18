@@ -1,5 +1,8 @@
+# shared_env/orchestration/flows/credit_daily_flow.py
 from pathlib import Path
 import subprocess
+from datetime import datetime
+from shared_env.bi.export_for_bi import export_credit_for_bi
 
 # repo_root = .../shared_env/orchestration/flows → parents[3] = repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -17,7 +20,8 @@ def main():
     # Stage 6 (credit) – daily HTML report
     run_rel("credit_scoring_system/reports/run_daily_credit_report.py")
 
+    # D3) Tableau export (run AFTER the above steps succeed)
+    export_credit_for_bi(datetime.now())
+
 if __name__ == "__main__":
     main()
-
-

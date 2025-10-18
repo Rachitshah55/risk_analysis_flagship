@@ -1,0 +1,28 @@
+{
+  "month": "2025-10",
+  "days_total": 2,
+  "days_with_kpis": 2,
+  "total_txns": 0,
+  "flagged": 0,
+  "flagged_pct": 0.0,
+  "p50_latency_ms": null,
+  "p95_latency_ms": null,
+  "precision": null,
+  "recall": null,
+  "fpr": null,
+  "arms": [],
+  "rules_top": [],
+  "days": [
+    {
+      "date": "2025-10-16",
+      "kpis_present": true,
+      "folder": "C:\\DevProjects\\risk_analysis_flagship\\docs_global\\reports\\fraud\\2025-10-16"
+    },
+    {
+      "date": "2025-10-17",
+      "kpis_present": true,
+      "folder": "C:\\DevProjects\\risk_analysis_flagship\\docs_global\\reports\\fraud\\2025-10-17"
+    }
+  ],
+  "generated_at": "2025-10-18T02:53:46Z"
+}

@@ -191,3 +191,31 @@ jobs:
             docs_global/monitoring/**/*
           if-no-files-found: ignore
           retention-days: 7
+  # .github/workflows/ci.yml (append this job)
+  reporting-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install minimal deps for reporting
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas nbconvert nbformat jupyter mlflow
+      - name: Run daily reports in dry-run
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "$pwd"
+          # Use a local mlruns so MLflow calls (if any) don't error
+          $env:MLFLOW_TRACKING_URI = "file:///$((Get-Location).Path.Replace('\','/'))/mlruns"
+          python fraud_detection_system/reports/run_daily_fraud_report.py --dry-run
+          python credit_scoring_system/reports/run_daily_credit_report.py --dry-run
+      - name: Upload reporting artifacts (best-effort)
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage7-reporting-smoke
+          path: docs_global/reports/**
+          if-no-files-found: warn
+

@@ -1,0 +1,2 @@
+total_txns,flagged,flagged_pct,p50_latency_ms,p95_latency_ms,precision,recall,fpr,fraud_prevented_usd,arms,rules_top,drift_metrics_present,date,system
+0,0,0.0,,,,,,,,[],True,2025-10-17,fraud

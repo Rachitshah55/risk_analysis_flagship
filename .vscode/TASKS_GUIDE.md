@@ -66,7 +66,69 @@
 
 *(Older wording about EOM outputs for context: lines 19–24. :contentReference[oaicite:5]{index=5})*
 
+## 🗓 Monthly — Fraud (new)
+
+### Tasks (new)
+- **Fraud: Stage 7 — Monthly Roll-up (auto YYYY-MM)**  
+  Aggregates all daily fraud KPIs for the current month from  
+  `docs_global\reports\fraud\YYYY-MM-DD\kpis.json`, computes volume-weighted metrics (p50/p95 latency, precision/recall/FPR when present), top rules, and A/B arm summary.  
+  Outputs:
+  - `docs_global\reports\fraud\YYYY-MM\monthly_kpis.json`
+  - `docs_global\reports\fraud\YYYY-MM\fraud_monthly_summary.html`  
+  Logs a run to MLflow experiment **`fraud_stage7_monthly_rollup`** (metrics + HTML/JSON artifacts).
+
+- **Open: This Month's Fraud Summary**  
+  Opens `fraud_monthly_summary.html` for the current `YYYY-MM`.  
+  (Uses PowerShell: `$m=Get-Date -Format yyyy-MM; Start-Process "<...>/$m/fraud_monthly_summary.html"` — this format avoids quoting issues.)
+
+> Optional: If you schedule month-end automation, run the roll-up at **23:10 PT** on the last day.
+
 ---
+
+## ▶️ How to Run (Monthly)
+1) **Fraud: Stage 7 — Monthly Roll-up (auto YYYY-MM)**  
+   - To target a specific month, run from a terminal:  
+     ```
+     C:\DevProjects\risk_analysis_flagship\.venv\Scripts\python.exe fraud_detection_system\reports\rollup_month_fraud_reports.py --month 2025-09
+     ```
+2) **Open: This Month's Fraud Summary** to visually verify.
+
+---
+
+## ✅ Success Criteria (Monthly — Fraud)
+- File exists and opens:  
+  `docs_global\reports\fraud\YYYY-MM\fraud_monthly_summary.html`
+- JSON exists and aligns with HTML + MLflow:  
+  `docs_global\reports\fraud\YYYY-MM\monthly_kpis.json`
+- MLflow experiment **`fraud_stage7_monthly_rollup`** shows a run for the month with:
+  - Metrics: `days_total`, `days_with_kpis`, `total_txns`, `flagged`, `flagged_pct`, `p50_latency_ms`, `p95_latency_ms`, and (when present) `precision`, `recall`, `fpr`
+  - Artifacts: `report/fraud_monthly_summary.html`, `report/monthly_kpis.json`
+
+---
+
+## 🧪 What the Roll-up Computes
+- **Totals:** `total_txns`, `flagged`, `flagged_pct = flagged / total_txns`
+- **Latency:** volume-weighted p50 / p95 across days
+- **Performance (if labels present in any day):** volume-weighted `precision`, `recall`, `fpr`
+- **A/B (if present):** per-arm totals (`n`, `flagged`, `flagged_pct`)
+- **Top Rules:** monthly top-N by cumulative count
+- **Coverage:** `days_with_kpis` / `days_total`, plus a days appendix
+
+---
+
+## 🩹 Troubleshooting (Monthly — Fraud)
+- **Opener task errors with “Missing ')' in method call”**  
+  Ensure the task uses:  
+  `$m=Get-Date -Format yyyy-MM; Start-Process ".../$m/fraud_monthly_summary.html"`  
+  (Avoid nested single quotes inside the `-Command` string.)
+- **Monthly summary blank or zeros**  
+  Check that daily folders under `docs_global\reports\fraud\YYYY-MM-DD\` contain `kpis.json`. The roll-up skips days with missing or empty JSON.
+- **MLflow run missing**  
+  Confirm `MLFLOW_TRACKING_URI` points to the project `mlruns` (your task already sets this). Then re-run the roll-up task.
+
+---
+---
+
 
 ## ⚙️ Services & Utilities
 

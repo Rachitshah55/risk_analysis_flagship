@@ -134,6 +134,29 @@
       "problemMatcher": []
     },
     {
+      "label": "Fraud: Stage 7 — Monthly Roll-up (auto YYYY-MM)",
+      "type": "process",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": ["fraud_detection_system/reports/rollup_month_fraud_reports.py"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": { "MLFLOW_TRACKING_URI": "file:///C:/DevProjects/risk_analysis_flagship/mlruns" }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Open: This Month's Fraud Summary",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$m=Get-Date -Format yyyy-MM; Start-Process \"C:/DevProjects/risk_analysis_flagship/docs_global/reports/fraud/$m/fraud_monthly_summary.html\""
+      ],
+      "options": { "cwd": "C:/DevProjects/risk_analysis_flagship" },
+      "problemMatcher": []
+    },    
+    {
       "label": "Fraud API (reload)",
       "type": "process",
       "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
@@ -177,6 +200,22 @@
       "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
       "args": ["${workspaceFolder}\\shared_env\\monitoring\\monitor_fraud_api_logs.py"],
       "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "BI: Export for Tableau (Today)",
+      "type": "process",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": ["${workspaceFolder}/shared_env/bi/export_for_bi.py"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": []
+    },
+    {
+      "label": "BI: Export for Tableau (Pick date)",
+      "type": "process",
+      "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",
+      "args": ["${workspaceFolder}/shared_env/bi/export_for_bi.py","--date","${input:reportDateISO}"],
+      "options": {"cwd": "${workspaceFolder}"},
       "problemMatcher": []
     },
     {
@@ -241,6 +280,12 @@
       "type": "promptString",
       "description": "Enter relative script path (e.g., shared_env/scripts/train.py)",
       "default": "shared_env/scripts/mlflow_smoke.py"
+    },
+    {
+      "id": "reportDateISO",
+      "type": "promptString",
+      "description": "Report date (YYYY-MM-DD)",
+      "default": "2025-10-17"
     }
   ]
 }
