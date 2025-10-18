@@ -1,12 +1,12 @@
 # C:\DevProjects\risk_analysis_flagship\credit_scoring_system\reports\run_daily_credit_report.py
-# Fresh full version — Stage 6 daily credit report runner
+# Stage 6 daily credit report runner (+ --dry-run for CI smoke)
 
 import os
 import sys
 import json
 import argparse
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime
 
 # --------------------------------------------------------------------------------------
 # Ensure the project root is on sys.path so "credit_scoring_system" package resolves
@@ -56,9 +56,33 @@ def _setup_mlflow():
     return exp
 
 
-def main(day: str | None = None, to_pdf: bool = False, verbose: bool = True, log_mlflow: bool = True):
+def _credit_outdir(day_str: str) -> Path:
+    """Pure path builder used by --dry-run so we don't touch the filesystem."""
+    return PROJECT_ROOT / "docs_global" / "reports" / "credit" / day_str
+
+
+def main(
+    day: str | None = None,
+    to_pdf: bool = False,
+    verbose: bool = True,
+    log_mlflow: bool = True,
+    dry_run: bool = False,
+) -> int:
     # Resolve target day
     day_str = day or date.today().strftime("%Y-%m-%d")
+
+    if dry_run:
+        # DRY-RUN: print planned inputs/outputs and exit successfully with no side-effects
+        outdir = _credit_outdir(day_str)
+        monitor_dir = MON_CREDIT / day_str
+        kpis_json = outdir / "kpis.json"
+        html_out = outdir / "credit_daily_report.html"
+        print(f"[DRY-RUN] Credit daily report for {day_str}")
+        print(f"[DRY-RUN] Expect Stage 5 inputs at: {monitor_dir} (drift_summary.csv)")
+        print(f"[DRY-RUN] Would write: {kpis_json}, {html_out}")
+        print("[DRY-RUN] Skipping notebook render and MLflow logging.")
+        return 0
+
     if verbose:
         print(f"[Stage6] Credit Daily Report for {day_str}")
 
@@ -71,13 +95,12 @@ def main(day: str | None = None, to_pdf: bool = False, verbose: bool = True, log
     today = load_daily(day_str)
     trailing = load_trailing(7, day_str)
     kpis = kpi_today_vs_trailing(today, trailing)
-    missing = [k for k in ("avg_pd_today","el_total_today","delta_el_vs_7d") if kpis.get(k) is None]
+    missing = [k for k in ("avg_pd_today", "el_total_today", "delta_el_vs_7d") if kpis.get(k) is None]
     if missing:
         print("[Stage6] Note: the following KPIs are None →", missing)
         print("         Ensure these files exist for today:")
         print("         - credit_scoring_system\\outputs\\scoring\\pd_scores_YYYYMMDD.parquet  (must have 'pd')")
         print("         - credit_scoring_system\\outputs\\scoring\\segment_rollups_YYYYMMDD.parquet  (EL column tolerant: el/expected_loss/el_total)")
-
 
     # 2) Persist KPIs (used by monthly roll-up)
     outdir = ensure_outdir(day_str)
@@ -114,21 +137,27 @@ def main(day: str | None = None, to_pdf: bool = False, verbose: bool = True, log
 
     if verbose:
         print("[Stage6] Done.")
+    return 0
 
 
-if __name__ == "__main__":
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Stage 6 — Credit Daily Reporting")
     parser.add_argument("--day", help="Target day as YYYY-MM-DD (defaults to today).")
     parser.add_argument("--pdf", action="store_true", help="Also render PDF via nbconvert webpdf (optional).")
-    parser.add_argument(
-        "--no-mlflow", action="store_true", help="Skip MLflow logging (still writes HTML + KPIs)."
-    )
+    parser.add_argument("--no-mlflow", action="store_true", help="Skip MLflow logging (still writes HTML + KPIs).")
     parser.add_argument("--quiet", action="store_true", help="Reduce console output.")
-    args = parser.parse_args()
+    parser.add_argument("--dry-run", action="store_true", help="CI mode: print planned actions and exit 0.")
+    return parser.parse_args()
 
-    main(
-        day=args.day,
-        to_pdf=args.pdf,
-        verbose=not args.quiet,
-        log_mlflow=(not args.no_mlflow),
+
+if __name__ == "__main__":
+    _args = _parse_args()
+    raise SystemExit(
+        main(
+            day=_args.day,
+            to_pdf=_args.pdf,
+            verbose=not _args.quiet,
+            log_mlflow=(not _args.no_mlflow),
+            dry_run=_args.dry_run,
+        )
     )

@@ -1,4 +1,6 @@
 # C:\DevProjects\risk_analysis_flagship\fraud_detection_system\reports\run_daily_fraud_report.py
+# Stage 7 daily fraud ops report runner (+ --dry-run for CI smoke)
+
 from __future__ import annotations
 from pathlib import Path
 import argparse, os, json, datetime as dt
@@ -10,27 +12,48 @@ from utils.fraud_report_utils import (
     compute_kpis, save_json, render_nb_or_fallback
 )
 
-# FIX: this file sits at repo_root/fraud_detection_system/reports/run_daily_fraud_report.py
+# This file sits at repo_root/fraud_detection_system/reports/run_daily_fraud_report.py
 # reports -> (0), fraud_detection_system -> (1), REPO_ROOT -> (2)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-def parse_args():
-    p = argparse.ArgumentParser()
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Stage 7 — Fraud Daily Reporting")
     p.add_argument("--date", help="YYYY-MM-DD (default: today)", default=None)
-    p.add_argument("--per_fraud_usd", type=float, default=200.0,
-                   help="Assumed avoided loss per blocked fraud if labels missing")
+    p.add_argument(
+        "--per_fraud_usd", type=float, default=200.0,
+        help="Assumed avoided loss per blocked fraud if labels missing"
+    )
+    p.add_argument(
+        "--dry-run", action="store_true",
+        help="CI mode: validate imports/paths, print planned actions, and exit 0 without rendering or MLflow."
+    )
     return p.parse_args()
+
 
 def to_date(s: str | None) -> dt.date:
     if not s:
         return dt.date.today()
     return dt.datetime.strptime(s, "%Y-%m-%d").date()
 
-def main():
+
+def main() -> int:
     args = parse_args()
     report_date = to_date(args.date)
+
+    # For dry-run we only compute paths (no I/O-heavy steps)
     paths = resolve_paths(REPO_ROOT, report_date)
 
+    if args.dry_run:
+        day = report_date.strftime("%Y-%m-%d")
+        print(f"[DRY-RUN] Fraud daily report for {day}")
+        print(f"[DRY-RUN] Would read JSONL logs: {paths['logs_jsonl']}")
+        print(f"[DRY-RUN] Would read monitor dir: {paths['monitor_dir']}")
+        print(f"[DRY-RUN] Would write: {paths['kpis_json']}, {paths['html_out']}")
+        print("[DRY-RUN] Skipping notebook render and MLflow logging.")
+        return 0
+
+    # --- Real execution path below ---
     # Load inputs
     df_logs = load_jsonl_safe(paths["logs_jsonl"])
     drift_df, drift_metrics = load_monitor_artifacts(paths["monitor_dir"])
@@ -44,10 +67,7 @@ def main():
     mode = render_nb_or_fallback(paths["template_ipynb"], work_dir, paths["html_out"])
 
     # MLflow logging
-    tracking_uri = os.environ.get(
-        "MLFLOW_TRACKING_URI",
-        f"file:///{(REPO_ROOT/'mlruns').as_posix()}"
-    )
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", f"file:///{(REPO_ROOT/'mlruns').as_posix()}")
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment("fraud_stage7_daily_reporting")
 
@@ -59,9 +79,9 @@ def main():
 
     with mlflow.start_run(tags=tags, run_name=f"fraud_daily_{report_date:%Y%m%d}"):
         for key in [
-            "total_txns","flagged","flagged_pct",
-            "p50_latency_ms","p95_latency_ms",
-            "precision","recall","fpr","fraud_prevented_usd"
+            "total_txns", "flagged", "flagged_pct",
+            "p50_latency_ms", "p95_latency_ms",
+            "precision", "recall", "fpr", "fraud_prevented_usd"
         ]:
             val = kpis.get(key)
             if isinstance(val, (int, float)) and val is not None:
@@ -79,8 +99,11 @@ def main():
 
     print(f"[OK] Fraud daily report written to: {paths['html_out']}")
     print(f"[OK] KPIs saved to: {paths['kpis_json']}")
-    if len(df_logs) == 0:
+    if isinstance(df_logs, pd.DataFrame) and len(df_logs) == 0:
         print("[WARN] No JSONL logs for today — report includes empty sections.")
 
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
