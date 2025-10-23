@@ -219,51 +219,6 @@ jobs:
           path: docs_global/reports/**
           if-no-files-found: warn
   
-  api-http-integration:
-    runs-on: windows-latest
-    continue-on-error: true  # promote to required once stable
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.13' }
-      - name: Install minimal deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests uvicorn fastapi pydantic
-      - name: Start Fraud API
-        shell: pwsh
-        run: |
-          $env:PYTHONPATH='${{ github.workspace }}'
-          python fraud_detection_system/api/run_api.py > api_stdout.txt 2> api_stderr.txt &
-          Start-Sleep -Seconds 8
-      - name: Probe /health and /openapi.json
-        shell: pwsh
-        run: |
-          python - << 'PY'
-          import time, requests
-          s = requests.Session()
-          s.trust_env = False
-          for i in range(10):
-              try:
-                  r = s.get("http://127.0.0.1:8001/health", timeout=2)
-                  if r.ok: break
-              except Exception: time.sleep(1)
-          print("HEALTH:", r.status_code if 'r' in locals() else 'no response')
-          try:
-              o = s.get("http://127.0.0.1:8001/openapi.json", timeout=2)
-              print("OPENAPI:", o.status_code)
-          except Exception as e:
-              print("OPENAPI error:", e)
-          PY
-      - name: Upload API logs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: api-logs
-          path: |
-            api_stdout.txt
-            api_stderr.txt
-
   unit-min:
     runs-on: windows-latest
     steps:
@@ -298,4 +253,55 @@ jobs:
           python shared_env/contracts/validate_credit_outputs.py
           python shared_env/contracts/validate_fraud_logs.py
         
+  api-http-integration:
+    runs-on: windows-latest
+    continue-on-error: true  # keep non-blocking until stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
 
+      - name: Install minimal deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn pydantic requests
+
+      - name: Start Fraud API (background)
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH='${{ github.workspace }}'
+          # Run as background process; capture logs
+          Start-Process -FilePath python -ArgumentList "fraud_detection_system/api/run_api.py" `
+            -NoNewWindow `
+            -RedirectStandardOutput api_stdout.txt `
+            -RedirectStandardError api_stderr.txt
+          Start-Sleep -Seconds 10
+
+      - name: Probe /health and /openapi.json (PowerShell)
+        shell: pwsh
+        run: |
+          $uri = "http://127.0.0.1:8001"
+          $ok = $false
+          for ($i=0; $i -lt 15; $i++) {
+            try {
+              $r = Invoke-WebRequest -Uri "$uri/health" -UseBasicParsing -TimeoutSec 4
+              if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 300) { $ok = $true; break }
+            } catch { Start-Sleep -Seconds 2 }
+          }
+          if (-not $ok) {
+            Write-Host "---- api_stderr.txt ----"
+            Get-Content api_stderr.txt -ErrorAction SilentlyContinue
+            throw "Health probe failed"
+          }
+          $o = Invoke-WebRequest -Uri "$uri/openapi.json" -UseBasicParsing -TimeoutSec 4
+          Write-Host "OPENAPI status:" $o.StatusCode
+
+      - name: Upload API logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-logs
+          path: |
+            api_stdout.txt
+            api_stderr.txt
+                
