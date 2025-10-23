@@ -10,6 +10,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from shared_env.bi.export_for_bi import export_credit_for_bi  # noqa: E402
+from shared_env.monitoring.alert_bridge import main as send_alerts
 
 PY = str(REPO_ROOT / ".venv" / "Scripts" / "python.exe")
 
@@ -28,6 +29,9 @@ def main():
     # D3) Tableau export (AFTER artifacts exist)
     export_credit_for_bi(datetime.now())
     print("[FLOW] Credit daily flow complete.")
+    # Send alerts after all tasks have been attempted
+    send_alerts()
 
 if __name__ == "__main__":
     main()
+

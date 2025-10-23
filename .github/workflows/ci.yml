@@ -218,4 +218,84 @@ jobs:
           name: stage7-reporting-smoke
           path: docs_global/reports/**
           if-no-files-found: warn
+  
+  api-http-integration:
+    runs-on: windows-latest
+    continue-on-error: true  # promote to required once stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Install minimal deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests uvicorn fastapi pydantic
+      - name: Start Fraud API
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH='${{ github.workspace }}'
+          python fraud_detection_system/api/run_api.py > api_stdout.txt 2> api_stderr.txt &
+          Start-Sleep -Seconds 8
+      - name: Probe /health and /openapi.json
+        shell: pwsh
+        run: |
+          python - << 'PY'
+          import time, requests
+          s = requests.Session()
+          s.trust_env = False
+          for i in range(10):
+              try:
+                  r = s.get("http://127.0.0.1:8001/health", timeout=2)
+                  if r.ok: break
+              except Exception: time.sleep(1)
+          print("HEALTH:", r.status_code if 'r' in locals() else 'no response')
+          try:
+              o = s.get("http://127.0.0.1:8001/openapi.json", timeout=2)
+              print("OPENAPI:", o.status_code)
+          except Exception as e:
+              print("OPENAPI error:", e)
+          PY
+      - name: Upload API logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-logs
+          path: |
+            api_stdout.txt
+            api_stderr.txt
+
+  unit-min:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Install pytest + pandas
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pandas
+      - name: Run minimal unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          pytest -q shared_env/tests
+          
+  data-contract-smoke:
+    runs-on: windows-latest
+    continue-on-error: true  # promote later if desired
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas pyarrow
+      - name: Validate contracts
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python shared_env/contracts/validate_credit_outputs.py
+          python shared_env/contracts/validate_fraud_logs.py
+        
 

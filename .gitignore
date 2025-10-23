@@ -68,3 +68,4 @@ fraud_detection_system/api/logs/*.jsonl
 
 # Local temp payloads
 payload.json
+
