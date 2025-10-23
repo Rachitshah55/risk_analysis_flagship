@@ -256,6 +256,8 @@ jobs:
   api-http-integration:
     runs-on: windows-latest
     continue-on-error: true  # keep non-blocking until stable
+    env:
+      PYTHONPATH: ${{ github.workspace }}  # ensure packages resolve in child procs too
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -264,33 +266,39 @@ jobs:
       - name: Install minimal deps
         run: |
           python -m pip install --upgrade pip
-          pip install fastapi uvicorn pydantic requests
+          pip install "fastapi==0.116.*" "uvicorn==0.35.*" pydantic requests
 
-      - name: Start Fraud API (background)
+      - name: Start Fraud API (background, no reload)
         shell: pwsh
         run: |
-          $env:PYTHONPATH='${{ github.workspace }}'
-          # Run as background process; capture logs
-          Start-Process -FilePath python -ArgumentList "fraud_detection_system/api/run_api.py" `
+          $ws = "${{ github.workspace }}"
+          $cmd = "python -m uvicorn fraud_detection_system.api.app:app --host 127.0.0.1 --port 8001 --log-level info --no-access-log"
+          Start-Process -FilePath "pwsh" -ArgumentList "-NoProfile","-Command",$cmd `
             -NoNewWindow `
-            -RedirectStandardOutput api_stdout.txt `
-            -RedirectStandardError api_stderr.txt
+            -RedirectStandardOutput "$ws\api_stdout.txt" `
+            -RedirectStandardError "$ws\api_stderr.txt" `
+            -WorkingDirectory "$ws"
           Start-Sleep -Seconds 10
 
       - name: Probe /health and /openapi.json (PowerShell)
         shell: pwsh
         run: |
           $uri = "http://127.0.0.1:8001"
+          $deadline = (Get-Date).AddSeconds(30)
           $ok = $false
-          for ($i=0; $i -lt 15; $i++) {
+          while ((Get-Date) -lt $deadline) {
             try {
               $r = Invoke-WebRequest -Uri "$uri/health" -UseBasicParsing -TimeoutSec 4
               if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 300) { $ok = $true; break }
-            } catch { Start-Sleep -Seconds 2 }
+            } catch {
+              Start-Sleep -Seconds 2
+            }
           }
           if (-not $ok) {
-            Write-Host "---- api_stderr.txt ----"
-            Get-Content api_stderr.txt -ErrorAction SilentlyContinue
+            Write-Host "--- api_stdout.txt (tail) ---"
+            Get-Content api_stdout.txt -Tail 200 -ErrorAction SilentlyContinue
+            Write-Host "--- api_stderr.txt (tail) ---"
+            Get-Content api_stderr.txt -Tail 200 -ErrorAction SilentlyContinue
             throw "Health probe failed"
           }
           $o = Invoke-WebRequest -Uri "$uri/openapi.json" -UseBasicParsing -TimeoutSec 4
@@ -304,4 +312,4 @@ jobs:
           path: |
             api_stdout.txt
             api_stderr.txt
-                
+
