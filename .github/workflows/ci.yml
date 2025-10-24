@@ -280,32 +280,59 @@ jobs:
             -WorkingDirectory "$ws"
           Start-Sleep -Seconds 10
 
-      - name: Probe /health and /openapi.json (Bash+Python)
-        shell: bash
+      - name: Start + Probe Fraud API (single PowerShell step)
+        shell: pwsh
         run: |
-          python - <<'PY'
-          import os, sys, time, requests
-          base = "http://127.0.0.1:8001"
-          s = requests.Session(); s.trust_env = False
-          deadline = time.time() + 60
-          ok = False; last_exc = None
-          while time.time() < deadline:
-              try:
-                  r = s.get(base + "/health", timeout=4)
-                  print("HEALTH", r.status_code, r.text[:200])
-                  if 200 <= r.status_code < 300:
-                      ok = True
-                      break
-              except Exception as e:
-                  last_exc = e
-              time.sleep(2)
-          if not ok:
-              print("Health probe failed.")
-              if last_exc: print("LAST_ERR:", last_exc)
-              sys.exit(1)
-          o = s.get(base + "/openapi.json", timeout=6)
-          print("OPENAPI", o.status_code, "bytes", len(o.content))
-          PY
+          $ws = "${{ github.workspace }}"
+          $env:PYTHONPATH = $ws
+  
+          # Start Uvicorn in background, capture PID and logs
+          $args = "-m uvicorn fraud_detection_system.api.app:app --host 127.0.0.1 --port 8001 --log-level info --no-access-log"
+          $p = Start-Process -FilePath "python" -ArgumentList $args `
+                -WorkingDirectory $ws -NoNewWindow -PassThru `
+                -RedirectStandardOutput "$ws\api_stdout.txt" `
+                -RedirectStandardError "$ws\api_stderr.txt"
+  
+          # Give it a moment to bind
+          Start-Sleep -Seconds 3
+  
+          # Probe /health with retries (max ~60s)
+          $uri = "http://127.0.0.1:8001/health"
+          $deadline = (Get-Date).AddSeconds(60)
+          $ok = $false
+          while ((Get-Date) -lt $deadline) {
+            try {
+              $r = Invoke-WebRequest -Uri $uri -UseBasicParsing -TimeoutSec 4
+              Write-Host "HEALTH $($r.StatusCode) $($r.Content.Substring(0, [Math]::Min(200, $r.Content.Length)))"
+              if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 300) { $ok = $true; break }
+            } catch {
+              Start-Sleep -Seconds 2
+            }
+            if ($p.HasExited) { break }
+          }
+  
+          if (-not $ok) {
+            Write-Host "--- api_stdout.txt (tail) ---"
+            if (Test-Path "$ws\api_stdout.txt") { Get-Content "$ws\api_stdout.txt" -Tail 200 -ErrorAction SilentlyContinue }
+            Write-Host "--- api_stderr.txt (tail) ---"
+            if (Test-Path "$ws\api_stderr.txt") { Get-Content "$ws\api_stderr.txt" -Tail 200 -ErrorAction SilentlyContinue }
+            try { if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force } } catch {}
+            throw "Health probe failed"
+          }
+  
+          # Quick OpenAPI check
+          try {
+            $o = Invoke-WebRequest -Uri "http://127.0.0.1:8001/openapi.json" -UseBasicParsing -TimeoutSec 6
+            Write-Host "OPENAPI $($o.StatusCode) bytes $(($o.Content | Out-String).Length)"
+          } catch {
+            Write-Host "OPENAPI probe failed: $_"
+            try { if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force } } catch {}
+            throw
+          }
+  
+          # Stop server cleanly
+          try { if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force } } catch {}
+    
        
       - name: Upload API logs
         uses: actions/upload-artifact@v4
