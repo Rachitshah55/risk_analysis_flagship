@@ -266,7 +266,7 @@ jobs:
       - name: Install minimal deps
         run: |
           python -m pip install --upgrade pip
-          pip install "fastapi==0.116.*" "uvicorn==0.35.*" pydantic requests
+          pip install requests uvicorn fastapi pydantic joblib
 
       - name: Start Fraud API (background, no reload)
         shell: pwsh
