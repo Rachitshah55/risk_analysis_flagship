@@ -280,38 +280,33 @@ jobs:
             -WorkingDirectory "$ws"
           Start-Sleep -Seconds 10
 
-      - name: Probe /health and /openapi.json (Python, proxy-proof)
-        shell: pwsh
+      - name: Probe /health and /openapi.json (Bash+Python)
+        shell: bash
         run: |
-          $script = @'
-      import os, sys, time, requests
-      base = "http://127.0.0.1:8001"
-      s = requests.Session()
-      s.trust_env = False  # ignore any proxy env on runner
-      deadline = time.time() + 60
-      ok = False
-      last_exc = None
-      while time.time() < deadline:
-          try:
-              r = s.get(base + "/health", timeout=4)
-              print("HEALTH:", r.status_code, r.text[:200])
-              if 200 <= r.status_code < 300:
-                  ok = True
-                  break
-          except Exception as e:
-              last_exc = e
-          time.sleep(2)
-      if not ok:
-          print("Health probe failed.")
-          if last_exc: print("LAST_ERR:", last_exc)
-          sys.exit(1)
-      o = s.get(base + "/openapi.json", timeout=6)
-      print("OPENAPI:", o.status_code, "bytes:", len(o.content))
-      '@
-          Set-Content -Path ci_probe.py -Value $script -Encoding UTF8
-          python ci_probe.py
-        
-
+          python - <<'PY'
+          import os, sys, time, requests
+          base = "http://127.0.0.1:8001"
+          s = requests.Session(); s.trust_env = False
+          deadline = time.time() + 60
+          ok = False; last_exc = None
+          while time.time() < deadline:
+              try:
+                  r = s.get(base + "/health", timeout=4)
+                  print("HEALTH", r.status_code, r.text[:200])
+                  if 200 <= r.status_code < 300:
+                      ok = True
+                      break
+              except Exception as e:
+                  last_exc = e
+              time.sleep(2)
+          if not ok:
+              print("Health probe failed.")
+              if last_exc: print("LAST_ERR:", last_exc)
+              sys.exit(1)
+          o = s.get(base + "/openapi.json", timeout=6)
+          print("OPENAPI", o.status_code, "bytes", len(o.content))
+          PY
+       
       - name: Upload API logs
         uses: actions/upload-artifact@v4
         if: always()
