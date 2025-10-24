@@ -280,29 +280,37 @@ jobs:
             -WorkingDirectory "$ws"
           Start-Sleep -Seconds 10
 
-      - name: Probe /health and /openapi.json (PowerShell)
+      - name: Probe /health and /openapi.json (Python, proxy-proof)
         shell: pwsh
         run: |
-          $uri = "http://127.0.0.1:8001"
-          $deadline = (Get-Date).AddSeconds(30)
-          $ok = $false
-          while ((Get-Date) -lt $deadline) {
-            try {
-              $r = Invoke-WebRequest -Uri "$uri/health" -UseBasicParsing -TimeoutSec 4
-              if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 300) { $ok = $true; break }
-            } catch {
-              Start-Sleep -Seconds 2
-            }
-          }
-          if (-not $ok) {
-            Write-Host "--- api_stdout.txt (tail) ---"
-            Get-Content api_stdout.txt -Tail 200 -ErrorAction SilentlyContinue
-            Write-Host "--- api_stderr.txt (tail) ---"
-            Get-Content api_stderr.txt -Tail 200 -ErrorAction SilentlyContinue
-            throw "Health probe failed"
-          }
-          $o = Invoke-WebRequest -Uri "$uri/openapi.json" -UseBasicParsing -TimeoutSec 4
-          Write-Host "OPENAPI status:" $o.StatusCode
+          $script = @'
+      import os, sys, time, requests
+      base = "http://127.0.0.1:8001"
+      s = requests.Session()
+      s.trust_env = False  # ignore any proxy env on runner
+      deadline = time.time() + 60
+      ok = False
+      last_exc = None
+      while time.time() < deadline:
+          try:
+              r = s.get(base + "/health", timeout=4)
+              print("HEALTH:", r.status_code, r.text[:200])
+              if 200 <= r.status_code < 300:
+                  ok = True
+                  break
+          except Exception as e:
+              last_exc = e
+          time.sleep(2)
+      if not ok:
+          print("Health probe failed.")
+          if last_exc: print("LAST_ERR:", last_exc)
+          sys.exit(1)
+      o = s.get(base + "/openapi.json", timeout=6)
+      print("OPENAPI:", o.status_code, "bytes:", len(o.content))
+      '@
+          Set-Content -Path ci_probe.py -Value $script -Encoding UTF8
+          python ci_probe.py
+        
 
       - name: Upload API logs
         uses: actions/upload-artifact@v4
