@@ -219,6 +219,43 @@
       "problemMatcher": []
     },
     {
+      "label": "Alert: Send test message",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["shared_env/monitoring/alert_bridge.py", "--test"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Backup: Nightly snapshot (manual)",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["shared_env/backup/nightly_snapshot.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Open: Servers Index (MD)",
+      "type": "process",
+      "command": "${command:workbench.action.files.openFile}",
+      "args": ["${workspaceFolder}/INDEX_SERVERS.md"]
+    },
+    {
+      "label": "Release: Credit → write PROD breadcrumb (today)",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["shared_env/release/write_credit_breadcrumb.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },    
+    {
+      "label": "Open: MLflow UI",
+      "type": "process",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "webbrowser", "http://127.0.0.1:5000"],
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
       "label": "Fraud: A/B Evaluate (manual)",
       "type": "process",
       "command": "C:/DevProjects/risk_analysis_flagship/.venv/Scripts/python.exe",

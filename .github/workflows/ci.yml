@@ -343,3 +343,55 @@ jobs:
             api_stdout.txt
             api_stderr.txt
 
+  http-integration:
+    name: http-integration (non-blocking)
+    runs-on: windows-latest
+    continue-on-error: true
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Install deps (requests only)
+        run: pip install requests
+      - name: Boot Fraud API (no reload)
+        shell: pwsh
+        run: |
+          $env:MLFLOW_TRACKING_URI="file:///$((Resolve-Path mlruns).Path)"
+          python fraud_detection_system/api/run_api.py | Tee-Object api_stdout.txt
+        continue-on-error: true
+      - name: Probe endpoints
+        if: always()
+        shell: python
+        run: |
+          import os, time, requests
+          s = requests.Session(); s.trust_env=False
+          ok=False
+          for _ in range(30):
+            try:
+              r = s.get("http://127.0.0.1:8001/health", timeout=2)
+              if r.ok:
+                ok=True; break
+            except Exception: time.sleep(1)
+          print("health_ok=", ok)
+          if ok:
+            resp = s.post("http://127.0.0.1:8001/score", json={"amount":120.5,"account_age_days":200,"country":"US","device_id":"D_A","hour_of_day":20}, timeout=3)
+            print("score_status=", resp.status_code, "keys=", list(resp.json().keys()))
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: http-integration-logs
+          path: |
+            api_stdout.txt
+            fraud_detection_system/api/logs/**.jsonl
+
+  # Make reporting-smoke a gating step by ordering (branch protection should also mark it required)
+  gate-reporting:
+    name: reporting gate
+    runs-on: windows-latest
+    needs: [validate, stage5-monitor-smoke, fraud-api-smoke, http-integration, reporting-smoke]
+    steps:
+      - run: echo "All upstream jobs finished. Enforce required status via branch protection."
+
+

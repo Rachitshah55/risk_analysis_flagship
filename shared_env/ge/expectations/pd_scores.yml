@@ -1,0 +1,9 @@
+suite_name: pd_scores_basic
+dataset: "credit_scoring_system/outputs/scoring/pd_scores_YYYYMMDD.parquet"
+expectations:
+  - type: expect_column_to_exist
+    kwargs: { column: borrower_id }
+  - type: expect_column_values_to_be_between
+    kwargs: { column: pd, min_value: 0.0, max_value: 1.0, mostly: 1.0 }
+  - type: expect_table_row_count_to_be_greater_than
+    kwargs: { value: 0 }
