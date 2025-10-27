@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 
+# --- Config (env) ---
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "").strip()
 SMTP_HOST  = os.getenv("SMTP_HOST", "").strip()
 SMTP_PORT  = int(os.getenv("SMTP_PORT", "0") or 0)
@@ -19,6 +20,7 @@ SMTP_FROM  = os.getenv("SMTP_FROM", "").strip() or SMTP_USER
 ALERT_TO   = [e.strip() for e in os.getenv("ALERT_TO", "").split(",") if e.strip()]
 ALERT_MIN_SEVERITY = (os.getenv("ALERT_MIN_SEVERITY") or "warn").lower()
 DEFAULT_CHANNEL = (os.getenv("ALERT_CHANNEL") or "both").lower()  # slack|email|both
+EMAIL_TRANSPORT = os.getenv("EMAIL_TRANSPORT", "smtp").lower()    # smtp|gmail_api
 
 SEVERITY_ORDER = {"info": 0, "warn": 1, "critical": 2}
 
@@ -61,10 +63,34 @@ def post_slack(msg: str) -> bool:
         print("[WARN] Slack send failed:", e)
         return False
 
-def send_email(subject: str, body: str) -> bool:
+# --- Gmail API path (no app passwords) ---
+def send_email_via_gmail_api(subject: str, body: str) -> bool:
+    try:
+        # gmail_api_helper.py must live in the same folder as this file
+        from gmail_api_helper import send_gmail_api
+    except Exception as e:
+        print("[WARN] Gmail API helper not available:", e)
+        return False
+
+    to_list = ALERT_TO
+    sender = SMTP_FROM or (to_list[0] if to_list else "")
+    if not (sender and to_list):
+        print("[INFO] Gmail API: missing sender/ALERT_TO; skipping.")
+        return False
+    try:
+        send_gmail_api(subject, body, sender, to_list)
+        print("[OK] Gmail API email sent.")
+        return True
+    except Exception as e:
+        print("[WARN] Gmail API send failed:", e)
+        return False
+
+# --- SMTP path (fallback/alt transport) ---
+def send_email_smtp(subject: str, body: str) -> bool:
     if not (SMTP_HOST and SMTP_PORT and SMTP_FROM and ALERT_TO):
         print("[INFO] SMTP not configured; printing message\n", subject, "\n", body)
         return False
+
     msg = EmailMessage()
     msg["From"] = SMTP_FROM
     msg["To"] = ", ".join(ALERT_TO)
@@ -89,11 +115,17 @@ def send_email(subject: str, body: str) -> bool:
                 if SMTP_USER and SMTP_PASS:
                     s.login(SMTP_USER, SMTP_PASS)
                 s.send_message(msg)
-        print("[OK] Email sent.")
+        print("[OK] Email sent (SMTP).")
         return True
     except Exception as e:
-        print("[WARN] Email send failed:", e)
+        print("[WARN] Email send failed (SMTP):", e)
         return False
+
+def send_email(subject: str, body: str) -> bool:
+    if EMAIL_TRANSPORT == "gmail_api":
+        return send_email_via_gmail_api(subject, body)
+    # default/fallback
+    return send_email_smtp(subject, body)
 
 def format_message(found: List[Tuple[str, Path]], day: str) -> str:
     host = socket.gethostname()
