@@ -30,3 +30,16 @@
 ## Approvals
 - Owner: __________  Date: ______
 - Risk Lead: ______  Date: ______
+
+## Change Log
+
+### 2025-10-29 — PROD pointer update (pointer-only)
+- Updated `fraud_detection_system/models/PROD_POINTER.txt` to a repo-relative path for CI portability:
+  - **New pointer:** `models/CAND_20251014/`
+  - **Old pointer:** local absolute Windows path (non-portable)
+- No change to model weights, thresholds, or features. MLflow run unchanged.
+- **Smoke evidence**: `/health` = 200; `/score` returns 200 with valid JSON.
+- Approvals:
+  - Owner: __________________  Date: __________
+  - Risk Lead: ______________  Date: __________
+  - Release Mgr: ____________  Date: __________
