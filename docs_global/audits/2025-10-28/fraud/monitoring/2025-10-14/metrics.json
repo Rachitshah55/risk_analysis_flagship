@@ -1,0 +1,11 @@
+{
+  "date": "2025-10-14",
+  "requests": 12,
+  "flagged_rate": 0.25,
+  "review_rate": 0.0,
+  "mean_proba": 0.08032789640128613,
+  "p95_latency_ms": 9.049999999999994,
+  "ref_date": "2025-10-13",
+  "proba_col": "proba",
+  "latency_col": "latency_ms"
+}

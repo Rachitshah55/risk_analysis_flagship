@@ -69,3 +69,5 @@ fraud_detection_system/api/logs/*.jsonl
 # Local temp payloads
 payload.json
 
+shared_env/secrets/
+!shared_env/secrets/README.md

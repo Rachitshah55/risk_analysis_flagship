@@ -6,3 +6,4 @@ total_txns,flagged,flagged_pct,p50_latency_ms,p95_latency_ms,precision,recall,fp
 0,0,0.0,,,,,,,,[],True,2025-10-24,fraud
 0,0,0.0,,,,,,,,[],True,2025-10-25,fraud
 0,0,0.0,,,,,,,,[],True,2025-10-26,fraud
+0,0,0.0,,,,,,,,[],True,2025-10-28,fraud

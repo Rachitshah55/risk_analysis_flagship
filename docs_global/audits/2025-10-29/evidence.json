@@ -1,0 +1,206 @@
+{
+  "date": "2025-10-29",
+  "credit": {
+    "model_card": [
+      {
+        "src": "docs\\model_cards\\credit_model.md",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\credit_model.md",
+        "sha256": null
+      }
+    ],
+    "monitoring": [
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-06",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-06",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-10",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-10",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-12",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-12",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-13",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-13",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-14",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-14",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-16",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-16",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-17",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-17",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-18",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-18",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-22",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-22",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-23",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-23",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-24",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-24",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-25",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-25",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-26",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-26",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\credit\\2025-10-28",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monitoring\\2025-10-28",
+        "sha256": null
+      }
+    ],
+    "monthly": [
+      {
+        "src": "docs_global\\reports\\credit\\2025-10",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\monthly\\2025-10",
+        "sha256": null
+      }
+    ],
+    "prod_pointer": [
+      {
+        "src": "credit_scoring_system\\models\\PROD_POINTER.txt",
+        "dst": "docs_global\\audits\\2025-10-29\\credit\\PROD_POINTER.txt",
+        "sha256": "df8790bc221b484d6686f8ca8ee8f74b305744dabd796a35b0a63818761c0d4a"
+      }
+    ]
+  },
+  "fraud": {
+    "model_card": [
+      {
+        "src": "docs\\model_cards\\fraud_model.md",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\fraud_model.md",
+        "sha256": null
+      }
+    ],
+    "monitoring": [
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-06",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-06",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-12",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-12",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-13",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-13",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-14",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-14",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-15",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-15",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-16",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-16",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-17",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-17",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-18",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-18",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-22",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-22",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-23",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-23",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-24",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-24",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-25",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-25",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-26",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-26",
+        "sha256": null
+      },
+      {
+        "src": "docs_global\\monitoring\\fraud\\2025-10-28",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monitoring\\2025-10-28",
+        "sha256": null
+      }
+    ],
+    "monthly": [
+      {
+        "src": "docs_global\\reports\\fraud\\2025-10",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\monthly\\2025-10",
+        "sha256": null
+      }
+    ],
+    "rules": [
+      {
+        "src": "fraud_detection_system\\rules\\CHANGELOG.md",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\rules\\CHANGELOG.md",
+        "sha256": null
+      },
+      {
+        "src": "fraud_detection_system\\rules\\rules_v1.yml",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\rules\\rules_v1.yml",
+        "sha256": "a191878eae22400251ea233a697d832fafc0c4146271458a4217a72c256582e4"
+      }
+    ],
+    "prod_pointer": [
+      {
+        "src": "fraud_detection_system\\models\\PROD_POINTER.txt",
+        "dst": "docs_global\\audits\\2025-10-29\\fraud\\PROD_POINTER.txt",
+        "sha256": "a3230b33ddcb0ab180a7004e28b62f6fb3a577de708927b80ec1de67c5d49455"
+      }
+    ]
+  },
+  "notes": []
+}

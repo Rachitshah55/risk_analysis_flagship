@@ -1,0 +1,1 @@
+FLAGGED-RATE ALERT: today 0.000 vs yesterday 0.250

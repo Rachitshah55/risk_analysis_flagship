@@ -1,0 +1,7 @@
+DRIFT ALERT (PSI ≥ 0.25)
+    feature        type       psi
+     amount     numeric 27.630913
+hour_of_day     numeric 17.269322
+      proba     numeric 11.512893
+  device_id categorical  7.254322
+    country categorical  3.627161

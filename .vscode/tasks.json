@@ -271,6 +271,28 @@
       "presentation": { "reveal": "always", "focus": true }
     },
     {
+      "label": "Gov: Build Audit Pack (Today)",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe shared_env/ops/build_audit_pack.py",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "none",
+      "problemMatcher": []
+    },
+    {
+      "label": "Gov: Open Audit Pack (Latest)",
+      "type": "shell",
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-Command",
+          "$p = Get-ChildItem -Directory docs_global/audits | Sort-Object Name -Descending | Select-Object -First 1; if ($p) { ii $p.FullName } else { Write-Host 'No audit pack found.' }"
+        ]
+      },
+      "group": "none",
+      "problemMatcher": []
+    },
+    {
       "label": "Servers: Discover & Build Index",
       "type": "shell",
       "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",

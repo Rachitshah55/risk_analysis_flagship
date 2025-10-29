@@ -1,0 +1,7 @@
+DRIFT ALERT (PSI ≥ 0.25)
+    feature        type       psi
+  device_id categorical 28.323997
+ latency_ms     numeric  0.415889
+    country categorical  0.000000
+     amount     numeric       NaN
+hour_of_day     numeric       NaN

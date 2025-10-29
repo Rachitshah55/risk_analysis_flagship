@@ -2,7 +2,12 @@ name: ci
 
 on:
   push:
+    branches: [ "**" ]
   pull_request:
+    branches: [ "**" ]
+
+permissions:
+  contents: read
 
 jobs:
   validate:
@@ -386,6 +391,48 @@ jobs:
             api_stdout.txt
             fraud_detection_system/api/logs/**.jsonl
 
+  governance-gate:
+    name: Governance Gate (rules/model cards/audit pack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # Pass base and head SHAs to the checker so it can diff correctly.
+      # For pull_request:
+      PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      # For push:
+      PUSH_BASE_SHA: ${{ github.event.before }}
+      HEAD_SHA: ${{ github.sha }}
+      GITHUB_REF_NAME: ${{ github.ref_name }}
+      GITHUB_REF: ${{ github.ref }}
+      # Tweak these if your paths differ
+      RULES_DIR: fraud_detection_system/rules
+      RULES_CHANGELOG: fraud_detection_system/rules/CHANGELOG.md
+      CREDIT_MODELS_DIR: credit_scoring_system/models
+      FRAUD_MODELS_DIR: fraud_detection_system/models
+      CREDIT_CARD: docs/model_cards/credit_model.md
+      FRAUD_CARD: docs/model_cards/fraud_model.md
+      AUDITS_DIR: docs_global/audits
+
+    steps:
+      - name: Checkout (full history for diffs)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lightweight deps (none strictly required)
+        run: |
+          python -V
+
+      - name: Run Governance Gate
+        shell: bash
+        run: |
+          python shared_env/ci/governance_gate.py
   # Make reporting-smoke a gating step by ordering (branch protection should also mark it required)
   gate-reporting:
     name: reporting gate

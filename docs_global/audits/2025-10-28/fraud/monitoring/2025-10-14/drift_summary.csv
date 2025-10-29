@@ -1,0 +1,7 @@
+feature,type,psi
+device_id,categorical,28.3239974922288
+latency_ms,numeric,0.4158889151022933
+country,categorical,0.0
+amount,numeric,
+hour_of_day,numeric,
+proba,numeric,

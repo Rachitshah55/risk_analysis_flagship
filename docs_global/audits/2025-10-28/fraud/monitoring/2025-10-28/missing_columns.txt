@@ -1,0 +1,1 @@
+Missing in TODAY (current): amount, hour_of_day, decision, proba, prob, score, p_fraud, fraud_proba, model_score, latency_ms, latency, elapsed_ms, country, device_id
