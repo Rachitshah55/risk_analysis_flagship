@@ -293,6 +293,24 @@
       "problemMatcher": []
     },
     {
+      "label": "Scheduler: Export XMLs",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-ExecutionPolicy","Bypass","-File","shared_env/ops/tasks_export.ps1"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "none",
+      "problemMatcher": []
+    },
+    {
+      "label": "Scheduler: Import XMLs (-Force)",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-ExecutionPolicy","Bypass","-File","shared_env/ops/tasks_import.ps1","-Force"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "none",
+      "problemMatcher": []
+    },
+    {
       "label": "Servers: Discover & Build Index",
       "type": "shell",
       "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",

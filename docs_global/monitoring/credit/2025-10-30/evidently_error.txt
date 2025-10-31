@@ -1,0 +1,2 @@
+[0.7(preset) failed] [Errno 2] No such file or directory: 'C:\\DevProjects\\risk_analysis_flagship\\.venv\\Lib\\site-packages\\evidently\\nbextension\\static\\index.js'
+[0.7(ValueDrift) failed] [Errno 2] No such file or directory: 'C:\\DevProjects\\risk_analysis_flagship\\.venv\\Lib\\site-packages\\evidently\\nbextension\\static\\index.js'
