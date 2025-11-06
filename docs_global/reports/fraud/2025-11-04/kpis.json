@@ -1,0 +1,14 @@
+{
+  "total_txns": 0,
+  "flagged": 0,
+  "flagged_pct": 0.0,
+  "p50_latency_ms": null,
+  "p95_latency_ms": null,
+  "precision": null,
+  "recall": null,
+  "fpr": null,
+  "fraud_prevented_usd": null,
+  "arms": null,
+  "rules_top": [],
+  "drift_metrics_present": true
+}
