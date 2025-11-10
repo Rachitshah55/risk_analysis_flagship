@@ -1,0 +1,23 @@
+{
+    "records": [
+      {
+        "income_to_loan_ratio": 1.80,
+        "num_past_delinquencies": 0,
+        "credit_utilization_pct": 0.15,
+        "n_records": 24
+      },
+      {
+        "income_to_loan_ratio": 0.75,
+        "num_past_delinquencies": 2,
+        "credit_utilization_pct": 0.72,
+        "n_records": 6
+      },
+      {
+        "income_to_loan_ratio": 3.10,
+        "num_past_delinquencies": 1,
+        "credit_utilization_pct": 0.35,
+        "n_records": 36
+      }
+    ]
+  }
+  

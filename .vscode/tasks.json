@@ -227,6 +227,25 @@
       "problemMatcher": []
     },
     {
+      "label": "Run: Credit API (dev)",
+      "type": "process",
+      "command": "C:\\DevProjects\\risk_analysis_flagship\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m", "uvicorn",
+        "credit_scoring_system.api.app:app",
+        "--host", "127.0.0.1",
+        "--port", "8002",
+        "--reload"
+      ],
+      "options": {
+        "cwd": "C:\\DevProjects\\risk_analysis_flagship",
+        "env": {
+          "CREDIT_API_DEBUG": "1"
+        }
+      },
+      "problemMatcher": []
+    },    
+    {
       "label": "Backup: Nightly snapshot (manual)",
       "type": "process",
       "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
