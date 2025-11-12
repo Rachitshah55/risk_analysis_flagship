@@ -1,197 +1,323 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Alert Bridge — Slack + Email (Gmail API or SMTP)
+- Loads .env from repo root (no extra deps), with backward-compat to your existing keys.
+- Keeps Gmail API path intact; Slack is additive via SLACK_WEBHOOK_URL.
+- Severity threshold via ALERT_MIN_SEVERITY (info < warn < error).
+- CLI:
+    python alert_bridge.py --print-config
+    python alert_bridge.py --test
+    python alert_bridge.py --title "X" --body "Y" --severity warn
+    python alert_bridge.py --slack-only
+    python alert_bridge.py --email-only
+"""
+
 from __future__ import annotations
-import os, sys, json, smtplib, ssl, socket, argparse, subprocess
-from email.message import EmailMessage
-from datetime import datetime
-from pathlib import Path
-from typing import List, Tuple
-import requests
-from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(ROOT / ".env")
+import argparse
+import base64
+import datetime as dt
+import json
+import os
+import sys
+from typing import Optional
 
-# --- Config (env) ---
-SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "").strip()
-SMTP_HOST  = os.getenv("SMTP_HOST", "").strip()
-SMTP_PORT  = int(os.getenv("SMTP_PORT", "0") or 0)
-SMTP_USER  = os.getenv("SMTP_USER", "").strip()
-SMTP_PASS  = os.getenv("SMTP_PASS", "").strip()
-SMTP_FROM  = os.getenv("SMTP_FROM", "").strip() or SMTP_USER
-ALERT_TO   = [e.strip() for e in os.getenv("ALERT_TO", "").split(",") if e.strip()]
-ALERT_MIN_SEVERITY = (os.getenv("ALERT_MIN_SEVERITY") or "warn").lower()
-DEFAULT_CHANNEL = (os.getenv("ALERT_CHANNEL") or "both").lower()  # slack|email|both
-EMAIL_TRANSPORT = os.getenv("EMAIL_TRANSPORT", "smtp").lower()    # smtp|gmail_api
+# ---------- Path helpers ----------
+HERE = os.path.abspath(os.path.dirname(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+ENV_PATH = os.path.join(REPO_ROOT, ".env")
 
-SEVERITY_ORDER = {"info": 0, "warn": 1, "critical": 2}
+SECRETS_DIR = os.path.join(HERE, "secrets")
+DEFAULT_CREDS = os.path.join(SECRETS_DIR, "credentials.json")
+DEFAULT_TOKEN = os.path.join(SECRETS_DIR, "token.json")
 
-def _today_str(date_arg: str | None) -> str:
-    return date_arg or datetime.now().strftime("%Y-%m-%d")
-
-def find_alert_files(day: str) -> List[Tuple[str, Path]]:
-    out: List[Tuple[str, Path]] = []
-    base = ROOT / "docs_global" / "monitoring"
-    for sys_name in ("credit", "fraud"):
-        d = base / sys_name / day
-        p = d / "alert.txt"
-        if p.is_file() and p.stat().st_size > 0:
-            out.append((sys_name, p))
-    return out
-
-def parse_severity(text: str) -> str:
-    low = text.lower()
-    for lvl in ("critical", "warn", "info"):
-        if f"severity:{lvl}" in low:
-            return lvl
-    if "psi" in low and ("0.25" in low or ">=0.25" in low):
-        return "warn"
-    return "info"
-
-def should_send(level: str) -> bool:
-    return SEVERITY_ORDER.get(level, 1) >= SEVERITY_ORDER.get(ALERT_MIN_SEVERITY, 1)
-
-def post_slack(msg: str) -> bool:
-    if not SLACK_WEBHOOK_URL:
-        print("[INFO] Slack not configured; printing message\n", msg)
-        return False
+# ---------- Minimal .env loader (no dependencies) ----------
+def load_env_file(path: str) -> None:
+    if not os.path.isfile(path):
+        return
     try:
-        s = requests.Session(); s.trust_env = False
-        r = s.post(SLACK_WEBHOOK_URL, json={"text": msg}, timeout=15)
-        r.raise_for_status()
-        print("[OK] Slack sent.")
-        return True
+        with open(path, "r", encoding="utf-8") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                # don't clobber already-existing env
+                os.environ.setdefault(k, v)
     except Exception as e:
-        print("[WARN] Slack send failed:", e)
-        return False
+        print(f"[WARN] Could not read .env: {e}", file=sys.stderr)
 
-# --- Gmail API path (no app passwords) ---
-def send_email_via_gmail_api(subject: str, body: str) -> bool:
+def apply_compat_env_aliases() -> None:
+    """
+    Map your old keys to the new ones if the new ones are missing.
+    - ALERT_TO -> ALERT_TO_EMAIL
+    - SMTP_FROM -> ALERT_FROM_EMAIL
+    - GMAIL_CLIENT_SECRET_JSON -> GMAIL_CREDENTIALS_JSON
+    """
+    alias_pairs = [
+        ("ALERT_TO_EMAIL", "ALERT_TO"),
+        ("ALERT_FROM_EMAIL", "SMTP_FROM"),
+        ("GMAIL_CREDENTIALS_JSON", "GMAIL_CLIENT_SECRET_JSON"),
+    ]
+    for new_key, old_key in alias_pairs:
+        if not os.environ.get(new_key) and os.environ.get(old_key):
+            os.environ[new_key] = os.environ[old_key]
+
+# load .env first, then apply aliases
+load_env_file(ENV_PATH)
+apply_compat_env_aliases()
+
+# ---------- Severity handling ----------
+_SEV_ORDER = {"info": 0, "warn": 1, "warning": 1, "error": 2}
+def _sev_value(name: str) -> int:
+    return _SEV_ORDER.get(str(name).lower().strip(), 0)
+def _meets_threshold(sev: str, min_sev_env: Optional[str]) -> bool:
+    min_name = (min_sev_env or "info").lower().strip()
+    return _sev_value(sev) >= _sev_value(min_name)
+
+# ---------- Slack ----------
+def send_slack(title: str, body: str, severity: str = "info") -> bool:
+    url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+    if not url:
+        return False
+    payload = {"text": f"*{severity.upper()}* — {title}\n{body}"}
     try:
-        # gmail_api_helper.py must live in the same folder as this file
-        from gmail_api_helper import send_gmail_api
+        try:
+            import requests  # prefer requests if present
+            r = requests.post(url, data=json.dumps(payload), headers={"Content-Type": "application/json"}, timeout=10)
+            ok = r.status_code in (200, 204)
+            if ok:
+                print("[OK] Slack message delivered.")
+            else:
+                print(f"[WARN] Slack returned HTTP {r.status_code}: {r.text}", file=sys.stderr)
+            return ok
+        except Exception:
+            # fallback to stdlib
+            import urllib.request
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                ok = 200 <= resp.status < 300
+                if ok:
+                    print("[OK] Slack message delivered.")
+                else:
+                    print(f"[WARN] Slack returned HTTP {resp.status}", file=sys.stderr)
+                return ok
     except Exception as e:
-        print("[WARN] Gmail API helper not available:", e)
+        print(f"[ERR] Slack send failed: {e}", file=sys.stderr)
         return False
 
-    to_list = ALERT_TO
-    sender = SMTP_FROM or (to_list[0] if to_list else "")
-    if not (sender and to_list):
-        print("[INFO] Gmail API: missing sender/ALERT_TO; skipping.")
-        return False
+# ---------- Gmail API (Installed App) ----------
+_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+
+def _load_gmail_service():
     try:
-        send_gmail_api(subject, body, sender, to_list)
+        from google.auth.transport.requests import Request
+        from google.oauth2.credentials import Credentials
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        from googleapiclient.discovery import build
+    except Exception as e:
+        print(f"[WARN] Gmail API libs not installed: {e}", file=sys.stderr)
+        return None
+
+    cred_path = os.getenv("GMAIL_CREDENTIALS_JSON", DEFAULT_CREDS)
+    token_path = os.getenv("GMAIL_TOKEN_JSON", DEFAULT_TOKEN)
+
+    creds = None
+    if os.path.isfile(token_path):
+        try:
+            from google.oauth2.credentials import Credentials
+            creds = Credentials.from_authorized_user_file(token_path, _SCOPES)
+        except Exception:
+            creds = None
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+            except Exception:
+                creds = None
+        if not creds:
+            if not os.path.isfile(cred_path):
+                print(f"[ERR] Missing Gmail credentials.json at: {cred_path}", file=sys.stderr)
+                return None
+            try:
+                flow = InstalledAppFlow.from_client_secrets_file(cred_path, _SCOPES)
+                creds = flow.run_local_server(port=0)
+            except Exception as e:
+                print(f"[ERR] Gmail OAuth failed: {e}", file=sys.stderr)
+                return None
+        try:
+            os.makedirs(os.path.dirname(token_path), exist_ok=True)
+            with open(token_path, "w", encoding="utf-8") as f:
+                f.write(creds.to_json())
+        except Exception:
+            pass
+
+    try:
+        service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+        return service
+    except Exception as e:
+        print(f"[ERR] Gmail service build failed: {e}", file=sys.stderr)
+        return None
+
+def send_gmail_api(subject: str, body_text: str, to_email: str) -> bool:
+    service = _load_gmail_service()
+    if service is None:
+        return False
+    from email.mime.text import MIMEText
+    msg = MIMEText(body_text, _subtype="plain", _charset="utf-8")
+    msg["to"] = to_email
+    msg["subject"] = subject
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+    try:
+        service.users().messages().send(userId="me", body={"raw": raw}).execute()
         print("[OK] Gmail API email sent.")
         return True
     except Exception as e:
-        print("[WARN] Gmail API send failed:", e)
+        print(f"[ERR] Gmail API send failed: {e}", file=sys.stderr)
         return False
 
-# --- SMTP path (fallback/alt transport) ---
-def send_email_smtp(subject: str, body: str) -> bool:
-    if not (SMTP_HOST and SMTP_PORT and SMTP_FROM and ALERT_TO):
-        print("[INFO] SMTP not configured; printing message\n", subject, "\n", body)
+# ---------- SMTP (optional) ----------
+def send_smtp(subject: str, body_text: str, to_email: str) -> bool:
+    host = os.getenv("SMTP_HOST", "").strip()
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user = os.getenv("SMTP_USER", "").strip()
+    password = os.getenv("SMTP_PASS", "").strip()
+    use_tls = os.getenv("SMTP_TLS", "true").lower().strip() != "false"
+    from_email = os.getenv("ALERT_FROM_EMAIL", user or to_email)
+
+    if not (host and to_email):
+        print("[WARN] SMTP not configured; skipping SMTP", file=sys.stderr)
         return False
 
-    msg = EmailMessage()
-    msg["From"] = SMTP_FROM
-    msg["To"] = ", ".join(ALERT_TO)
+    import smtplib
+    from email.mime.text import MIMEText
+    msg = MIMEText(body_text, _subtype="plain", _charset="utf-8")
     msg["Subject"] = subject
-    msg.set_content(body)
+    msg["From"] = from_email
+    msg["To"] = to_email
 
     try:
-        if SMTP_PORT == 465:
-            ctx = ssl.create_default_context()
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx, timeout=15) as s:
-                if SMTP_USER and SMTP_PASS:
-                    s.login(SMTP_USER, SMTP_PASS)
-                s.send_message(msg)
+        if use_tls and port != 465:
+            with smtplib.SMTP(host, port, timeout=15) as server:
+                server.ehlo()
+                server.starttls()
+                if user and password:
+                    server.login(user, password)
+                server.sendmail(from_email, [to_email], msg.as_string())
         else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:
-                s.ehlo()
-                try:
-                    s.starttls(context=ssl.create_default_context())
-                    s.ehlo()
-                except Exception:
-                    pass
-                if SMTP_USER and SMTP_PASS:
-                    s.login(SMTP_USER, SMTP_PASS)
-                s.send_message(msg)
-        print("[OK] Email sent (SMTP).")
+            with smtplib.SMTP_SSL(host, port, timeout=15) as server:
+                if user and password:
+                    server.login(user, password)
+                server.sendmail(from_email, [to_email], msg.as_string())
+        print("[OK] SMTP email sent.")
         return True
     except Exception as e:
-        print("[WARN] Email send failed (SMTP):", e)
+        print(f"[ERR] SMTP send failed: {e}", file=sys.stderr)
         return False
 
-def send_email(subject: str, body: str) -> bool:
-    if EMAIL_TRANSPORT == "gmail_api":
-        return send_email_via_gmail_api(subject, body)
-    # default/fallback
-    return send_email_smtp(subject, body)
+# ---------- Bridge ----------
+def send_alert(title: str, body: str, severity: str = "info",
+               email_only: bool = False, slack_only: bool = False) -> bool:
+    min_sev = os.getenv("ALERT_MIN_SEVERITY", "info")
+    if not _meets_threshold(severity, min_sev):
+        print(f"[SKIP] severity '{severity}' below threshold '{min_sev}'.")
+        return True
 
-def format_message(found: List[Tuple[str, Path]], day: str) -> str:
-    host = socket.gethostname()
-    lines = [f":rotating_light: Risk Alerts for {day} (host {host})"]
-    for sys_name, path in found:
-        text = path.read_text(encoding="utf-8", errors="ignore").strip()
-        lines.append(f"\n*{sys_name.upper()}* — {path}")
-        lines.append("```")
-        lines.append(text[:4000])
-        lines.append("```")
-    lines.append("\nMLflow UI: http://127.0.0.1:5000")
-    return "\n".join(lines)
+    delivered_any = False
 
-def git_sha_short() -> str:
-    try:
-        r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=5)
-        return r.stdout.strip() or "unknown"
-    except Exception:
-        return "unknown"
+    if not email_only:
+        ok_slack = send_slack(title, body, severity)
+        delivered_any = delivered_any or ok_slack
+
+    if not slack_only:
+        transport = os.getenv("EMAIL_TRANSPORT", "gmail_api").strip().lower()
+        to_email = os.getenv("ALERT_TO_EMAIL", "").strip()
+        if not to_email and transport != "disabled":
+            print("[WARN] ALERT_TO_EMAIL not set; skipping email channel", file=sys.stderr)
+        else:
+            subject = f"[{severity.upper()}] {title}"
+            ok_mail = False
+            if transport == "gmail_api":
+                ok_mail = send_gmail_api(subject, body, to_email)
+            elif transport == "smtp":
+                ok_mail = send_smtp(subject, body, to_email)
+            delivered_any = delivered_any or ok_mail
+
+    return delivered_any
+
+# ---------- CLI ----------
+def _build_parser():
+    p = argparse.ArgumentParser(description="Alert Bridge (Slack + Email)")
+    p.add_argument("--test", action="store_true", help="Send a test message to all configured channels.")
+    p.add_argument("--title", default=None, help="Alert title/subject.")
+    p.add_argument("--body", default=None, help="Alert body text.")
+    p.add_argument("--severity", default="info", choices=["info","warn","warning","error"], help="Severity level.")
+    p.add_argument("--slack-only", action="store_true", help="Send only to Slack.")
+    p.add_argument("--email-only", action="store_true", help="Send only to Email.")
+    p.add_argument("--print-config", action="store_true", help="Print resolved config (redacts secrets).")
+    return p
+
+def _print_config():
+    def redact(v: Optional[str]) -> str:
+        if not v:
+            return ""
+        if len(v) <= 8:
+            return "*" * len(v)
+        return v[:4] + "..." + v[-4:]
+
+    cfg = {
+        "ENV_PATH_LOADED": os.path.isfile(ENV_PATH),
+        "ALERT_MIN_SEVERITY": os.getenv("ALERT_MIN_SEVERITY", "info"),
+        "EMAIL_TRANSPORT": os.getenv("EMAIL_TRANSPORT", "gmail_api"),
+        "ALERT_TO_EMAIL": os.getenv("ALERT_TO_EMAIL", ""),
+        "ALERT_FROM_EMAIL": os.getenv("ALERT_FROM_EMAIL", ""),
+        "SLACK_WEBHOOK_URL": redact(os.getenv("SLACK_WEBHOOK_URL", "")),
+        "GMAIL_CREDENTIALS_JSON": os.getenv("GMAIL_CREDENTIALS_JSON", DEFAULT_CREDS),
+        "GMAIL_TOKEN_JSON": os.getenv("GMAIL_TOKEN_JSON", DEFAULT_TOKEN),
+        "SMTP_HOST": os.getenv("SMTP_HOST", ""),
+        "SMTP_PORT": os.getenv("SMTP_PORT", ""),
+        "SMTP_USER": os.getenv("SMTP_USER", ""),
+        "SMTP_PASS": redact(os.getenv("SMTP_PASS", "")),
+        "SMTP_TLS": os.getenv("SMTP_TLS", "true"),
+    }
+    print(json.dumps(cfg, indent=2))
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--day", help="YYYY-MM-DD (default: today)")
-    ap.add_argument("--msg", help="Override message (skips alert.txt scan if provided)")
-    ap.add_argument("--subject", help="Email subject override")
-    ap.add_argument("--level", default="info", choices=["info","warn","critical"])
-    ap.add_argument("--channel", default=DEFAULT_CHANNEL, choices=["slack","email","both"])
-    ap.add_argument("--test", action="store_true", help="Send a harmless test")
-    args = ap.parse_args()
+    parser = _build_parser()
+    args = parser.parse_args()
 
+    # honor print-config and EXIT (no implicit send)
+    if args.print_config:
+        _print_config()
+        return 0
+
+    # normalize severity once and reuse
+    sev = "warning" if args.severity in ("warn", "warning") else args.severity
+
+    # test path should HONOR --severity (not hard-code info)
     if args.test:
-        body = f"✅ Test alert — git:{git_sha_short()} — {datetime.now().isoformat(timespec='seconds')}"
-        subj = args.subject or "Test Alert (OK)"
-        ok = (args.channel in ("slack","both") and post_slack(body)) or False
-        ok = (args.channel in ("email","both") and send_email(subj, body)) or ok
-        print("[RESULT]", "delivered" if ok else "no-channel-configured")
-        sys.exit(0 if ok else 2)
+        now = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        title = "Alert Bridge — Test"
+        body = f"This is a test alert at {now}\nProject: risk_analysis_flagship"
+        ok = send_alert(title, body, severity=sev,
+                        email_only=args.email_only, slack_only=args.slack_only)
+        print("[RESULT] delivered" if ok else "[RESULT] failed")
+        return 0 if ok else 2
 
-    day = _today_str(args.day)
+    # normal mode
+    title = args.title or f"Alert at {dt.datetime.now().isoformat(timespec='seconds')}"
+    body  = args.body  or "(no body)"
 
-    if args.msg:
-        body = args.msg
-        worst = args.level
-    else:
-        found = find_alert_files(day)
-        if not found:
-            print(f"[OK] No alert.txt found for {day}.")
-            sys.exit(0)
-        worst = "info"
-        for _, p in found:
-            lvl = parse_severity(p.read_text(encoding="utf-8", errors="ignore"))
-            if SEVERITY_ORDER.get(lvl, 0) > SEVERITY_ORDER.get(worst, 0):
-                worst = lvl
-        if not should_send(worst):
-            print(f"[INFO] Found alerts at <= '{worst}' but ALERT_MIN_SEVERITY='{ALERT_MIN_SEVERITY}'. Skipping send.")
-            sys.exit(0)
-        body = format_message(found, day)
-
-    subj = args.subject or f"[RISK ALERT] {day} — worst={worst}"
-    ok = False
-    if args.channel in ("slack","both"):
-        ok = post_slack(body) or ok
-    if args.channel in ("email","both"):
-        ok = send_email(subj, body) or ok
-    print(f"[SENT] {('OK' if ok else 'NOOP')} at level '{worst}'.")
-    sys.exit(0 if ok else 2)
+    ok = send_alert(title, body, severity=sev,
+                    email_only=args.email_only, slack_only=args.slack_only)  # <- underscore
+    print("[RESULT] delivered" if ok else "[RESULT] failed")
+    return 0 if ok else 2
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
