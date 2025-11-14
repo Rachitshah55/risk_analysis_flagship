@@ -80,3 +80,6 @@ shared_env/**/secrets/**
 mlruns/
 __pycache__/
 *.pyc
+
+.kaggle/
+*.zip
