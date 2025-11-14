@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Risk Analysis Flagship — Home</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="assets/css/site.css" />
+
+  <!-- Libs -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 text-slate-800">
+  <custom-header></custom-header>
+
+  <!-- Mode & Freshness banner -->
+  <div id="mode-banner" class="bg-gradient-to-r from-indigo-50 to-emerald-50 border-b border-indigo-100">
+    <div class="container mx-auto px-4 py-2 text-sm text-slate-700 flex items-center gap-2">
+      <span id="mode-label" class="font-medium">Mode: …</span>
+      <span aria-hidden="true">•</span>
+      <span id="freshness-label" class="text-slate-600">Freshness: --</span>
+    </div>
+  </div>
+
+  <main class="container mx-auto px-4 py-8">
+    <!-- Hero -->
+    <section class="mb-12">
+      <div class="bg-white rounded-xl shadow-md p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-3">Risk Analysis Flagship</h1>
+        <p class="text-lg text-gray-600">
+          Real-time credit scoring and fraud detection pipeline monitoring
+        </p>
+      </div>
+    </section>
+
+    <!-- Today’s Status -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold text-gray-800 mb-6">Today's Status</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Credit -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <div class="flex items-center mb-4">
+            <i data-feather="credit-card" class="text-indigo-600 mr-3"></i>
+            <h3 class="text-lg font-medium text-gray-800">Credit Risk</h3>
+          </div>
+          <div id="credit-kpi" class="animate-pulse h-32 flex items-center justify-center">
+            <div class="text-gray-400">Loading data...</div>
+          </div>
+        </div>
+
+        <!-- Fraud -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <div class="flex items-center mb-4">
+            <i data-feather="shield" class="text-emerald-600 mr-3"></i>
+            <h3 class="text-lg font-medium text-gray-800">Fraud Detection</h3>
+          </div>
+          <div id="fraud-kpi" class="animate-pulse h-32 flex items-center justify-center">
+            <div class="text-gray-400">Loading data...</div>
+          </div>
+        </div>
+
+        <!-- Freshness -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <div class="flex items-center mb-4">
+            <i data-feather="clock" class="text-purple-600 mr-3"></i>
+            <h3 class="text-lg font-medium text-gray-800">Data Freshness</h3>
+          </div>
+          <div id="freshness-kpi" class="animate-pulse h-32 flex items-center justify-center">
+            <div class="text-gray-400">Loading data...</div>
+          </div>
+        </div>
+
+        <!-- MLflow -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <div class="flex items-center mb-4">
+            <i data-feather="activity" class="text-blue-600 mr-3"></i>
+            <h3 class="text-lg font-medium text-gray-800">MLflow Tracking</h3>
+          </div>
+          <div class="h-32 flex flex-col justify-center">
+            <a href="http://127.0.0.1:5000" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">
+              Open MLflow Dashboard
+            </a>
+            <p class="text-sm text-gray-500 mt-2">(Only available when running locally)</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="mb-12">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Credit Risk Trend (14 days)</h3>
+          <canvas id="credit-sparkline" height="150" aria-label="Credit Risk 14-day sparkline" role="img"></canvas>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Fraud Flagged Rate (14 days)</h3>
+          <canvas id="fraud-sparkline" height="150" aria-label="Fraud flagged rate 14-day sparkline" role="img"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <custom-footer></custom-footer>
+
+  <!-- App scripts -->
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script src="components/header.js"></script>
+  <script src="components/footer.js"></script>
+
+  <!-- Page bootstrap -->
+  <script>
+    (async () => {
+      // Mode label from config.json (utils.js should expose loadConfig)
+      try {
+        const cfg = await (window.loadConfig ? window.loadConfig() : Promise.resolve({ mode: 'hosted' }));
+        const modeEl = document.getElementById('mode-label');
+        if (modeEl) modeEl.textContent = `Mode: ${cfg.mode === 'local' ? 'Local' : 'Hosted'}`;
+      } catch { /* non-fatal */ }
+
+      // feather icons
+      feather.replace();
+    })();
+  </script>
+</body>
+</html>

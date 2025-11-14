@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Risk Analysis Flagship — Credit Analysis</title>
+  <link rel="stylesheet" href="assets/css/site.css"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 text-slate-800">
+  <custom-header></custom-header>
+
+  <main class="container mx-auto px-4 py-8">
+    <section class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Credit Risk Analysis</h1>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-2">Avg. Probability of Default</h3>
+          <div id="avg-pd" class="text-2xl font-bold text-blue-600">--%</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-2">Expected Loss</h3>
+          <div id="expected-loss" class="text-2xl font-bold text-blue-600">$--</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-2">Approvals</h3>
+          <div id="approvals" class="text-2xl font-bold text-green-600">--</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-2">Rejections</h3>
+          <div id="rejections" class="text-2xl font-bold text-red-600">--</div>
+        </div>
+      </div>
+
+      <!-- Shown only in Local mode -->
+      <div id="report-button" class="mb-8 hidden">
+        <a id="credit-report-link" href="#" target="_blank"
+           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <i data-feather="file-text" class="mr-2"></i>
+          Open Today's Credit Report
+        </a>
+      </div>
+    </section>
+
+    <section class="mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Average PD Trend (30 days)</h3>
+          <canvas id="pd-trend-chart" height="250" aria-label="Average PD trend (30 days)" role="img"></canvas>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Expected Loss Trend (30 days)</h3>
+          <canvas id="el-trend-chart" height="250" aria-label="Expected Loss trend (30 days)" role="img"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-xl shadow-md p-6 mb-8">
+      <h2 class="text-2xl font-semibold text-gray-800 mb-6">Credit Scoring API Demo</h2>
+
+      <div class="mb-6">
+        <label for="credit-payload" class="block text-sm font-medium text-gray-700 mb-2">Request Payload</label>
+        <textarea id="credit-payload" rows="8"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{
+    "applicant_id": "APP123456",
+    "age": 35,
+    "income": 75000,
+    "employment_length": 5,
+    "debt_to_income": 0.32,
+    "credit_history_length": 10,
+    "derogatory_marks": 1,
+    "credit_utilization": 0.45,
+    "loan_amount": 25000,
+    "loan_purpose": "debt_consolidation"
+}</textarea>
+      </div>
+
+      <div class="flex flex-wrap gap-3 mb-6">
+        <button id="score-api-btn"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          <i data-feather="send" class="mr-2"></i>
+          Score via API
+        </button>
+        <button id="use-sample-btn"
+                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+          <i data-feather="copy" class="mr-2"></i>
+          Use Sample
+        </button>
+      </div>
+
+      <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <h3 class="text-lg font-medium text-gray-800 mb-2">API Response</h3>
+        <pre id="api-response" class="text-sm text-gray-800 p-4 bg-white rounded overflow-auto max-h-64">Submit a request to see the response...</pre>
+      </div>
+    </section>
+  </main>
+
+  <custom-footer></custom-footer>
+
+  <!-- App scripts -->
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/credit.js"></script>
+  <script src="components/header.js"></script>
+  <script src="components/footer.js"></script>
+
+  <!-- Page bootstrap -->
+  <script>
+    (async () => {
+      try {
+        // 1) Show today's report link only in Local mode
+        if (window.showTodayReportIfLocal) {
+          await window.showTodayReportIfLocal('credit', 'report-button');
+        }
+
+        // 2) Disable API button if using mock mode per config.json
+        const cfg = await (window.loadConfig ? window.loadConfig() : Promise.resolve({ useMock: true }));
+        const apiBtn = document.getElementById('score-api-btn');
+        if (apiBtn && cfg.useMock) {
+          apiBtn.disabled = true;
+          apiBtn.title = 'Disabled in hosted/mock mode (set useMock=false in config.json to enable)';
+        }
+      } catch { /* non-fatal */ }
+
+      feather.replace();
+    })();
+  </script>
+</body>
+</html>

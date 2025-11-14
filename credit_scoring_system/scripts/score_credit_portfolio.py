@@ -114,25 +114,124 @@ def _prepare_X(df_feat: pd.DataFrame, id_col: str, allowed: Optional[List[str]])
     X = X.fillna(0.0)
     return X
 
-def _predict_pd(model, X: pd.DataFrame) -> np.ndarray:
-    # Prefer predict_proba
+def _predict_pd(model, X):
+    """
+    Predict PD with feature-alignment and a shape-mismatch fallback.
+
+    - First, try to align by feature names if the model exposes them.
+    - If XGBoost raises "Feature shape mismatch, expected: N, got M",
+      drop extra columns to match N and retry once.
+    """
+
+    def _align_by_feature_names(model, data):
+        """Best-effort alignment using model feature metadata (if available)."""
+        if not hasattr(data, "columns"):
+            return data  # not a DataFrame, nothing to align
+
+        feature_names = None
+
+        # 1) sklearn-style feature_names_in_
+        feature_names_in = getattr(model, "feature_names_in_", None)
+        if feature_names_in is not None:
+            feature_names = list(feature_names_in)
+
+        # 2) Raw XGBoost booster feature names
+        if feature_names is None and hasattr(model, "get_booster"):
+            try:
+                booster = model.get_booster()
+            except Exception:
+                booster = None
+            if booster is not None and getattr(booster, "feature_names", None):
+                # Only trust these if they actually exist in the DataFrame
+                booster_names = list(booster.feature_names)
+                if all(name in data.columns for name in booster_names):
+                    feature_names = booster_names
+
+        # 3) If we discovered compatible feature names, subset + order
+        if feature_names is not None:
+            missing = [f for f in feature_names if f not in data.columns]
+            if missing:
+                # If names clearly don't match, don't try to force it here.
+                # We'll rely on the shape-based fallback instead.
+                return data
+            data = data[feature_names]
+
+        return data
+
+    def _call_with_shape_fallback(predict_fn, data):
+        """
+        Call predict_fn(data). If XGBoost complains about feature shape mismatch,
+        parse "expected: N, got M" from the message and retry with N columns.
+        """
+        # First, try to align by feature names (if possible)
+        data = _align_by_feature_names(model, data)
+
+        # Ensure numeric if it's a DataFrame
+        if hasattr(data, "astype"):
+            data = data.astype(float)
+
+        try:
+            return predict_fn(data)
+        except ValueError as e:
+            msg = str(e)
+            if "Feature shape mismatch" not in msg or "expected:" not in msg or "got" not in msg:
+                # Different error → bubble up
+                raise
+
+            # Try to parse "expected: 4, got 6"
+            try:
+                after_expected = msg.split("expected:", 1)[1]
+                first_part, rest = after_expected.split(",", 1)
+                expected = int(first_part.strip())
+                after_got = rest.split("got", 1)[1]
+                got_str = after_got.strip().split()[0]
+                got = int(got_str)
+            except Exception:
+                # Parsing failed → re-raise original
+                raise
+
+            # Only attempt a fix if we truly have *more* features than expected
+            if got <= expected:
+                raise
+
+            # Drop extra columns/features to match "expected"
+            if hasattr(data, "iloc"):  # pandas DataFrame
+                data_fixed = data.iloc[:, :expected]
+            else:
+                arr = np.asarray(data, dtype=float)
+                if arr.ndim != 2 or arr.shape[1] < expected:
+                    raise
+                data_fixed = arr[:, :expected]
+
+            # Second (and last) attempt
+            return predict_fn(data_fixed)
+
+    # 1) Prefer predict_proba
     if hasattr(model, "predict_proba"):
         try:
-            proba = model.predict_proba(X)[:, 1]
-            return np.asarray(proba, dtype=float)
+            proba = _call_with_shape_fallback(model.predict_proba, X)
+            proba = np.asarray(proba, dtype=float)
+            # Handle both (n_samples,) and (n_samples, 2) shapes
+            if proba.ndim == 2 and proba.shape[1] > 1:
+                proba = proba[:, 1]
+            return proba.reshape(-1)
         except Exception:
             pass
-    # Fallback: decision_function → logistic transform
+
+    # 2) Fallback: decision_function → logistic transform
     if hasattr(model, "decision_function"):
         try:
-            d = model.decision_function(X)
-            # logistic transform
+            d = _call_with_shape_fallback(model.decision_function, X)
+            d = np.asarray(d, dtype=float).reshape(-1)
             return 1.0 / (1.0 + np.exp(-d))
         except Exception:
             pass
-    # Last resort: predict → cast to float
-    pred = model.predict(X)
-    return np.clip(np.asarray(pred, dtype=float), 0.0, 1.0)
+
+    # 3) Last resort: predict → cast to float, clipped to [0, 1]
+    pred = _call_with_shape_fallback(model.predict, X)
+    return np.clip(np.asarray(pred, dtype=float).reshape(-1), 0.0, 1.0)
+
+
 
 def _ensure_dir(p: Path):
     p.mkdir(parents=True, exist_ok=True)
@@ -228,18 +327,33 @@ def main():
     model = joblib.load(model_file)
 
     # Feature list awareness (prefer what the model says it saw at fit)
-    allowed_from_file = _load_feature_list(model_dir)  # may be None
-    expected = None
-    if hasattr(model, "feature_names_in_"):
-        # scikit-learn 1.0+ estimators/pipelines usually expose this
-        expected = list(getattr(model, "feature_names_in_"))
-    elif allowed_from_file:
-        expected = list(allowed_from_file)
-
-    # Build a numeric matrix, then strictly align to expected if we have it
+    allowed_from_file = _load_feature_list(model_dir)  # may be None or []
+    # Build numeric matrix first (all numeric, minus ID)
     X_all = _prepare_X(base, id_col=id_col, allowed=None)
+
+    expected: Optional[List[str]] = None
+
+    # 1) scikit-learn-style feature_names_in_
+    feature_names_in = getattr(model, "feature_names_in_", None)
+    if feature_names_in is not None and len(feature_names_in) > 0:
+        expected = list(feature_names_in)
+
+    # 2) Raw XGBoost booster feature names (only if they fit the DataFrame)
+    if expected is None and hasattr(model, "get_booster"):
+        try:
+            booster = model.get_booster()
+            booster_names = getattr(booster, "feature_names", None)
+            if booster_names and all(name in X_all.columns for name in booster_names):
+                expected = list(booster_names)
+        except Exception:
+            pass
+
+    # 3) Fall back to feature_list.json, filtered to existing columns
+    if expected is None and allowed_from_file:
+        expected = [c for c in allowed_from_file if c in X_all.columns]
+
+    # 4) Final alignment or fallback
     if expected:
-        # Reorder to the model's expected order and drop any extras
         missing_for_model = [c for c in expected if c not in X_all.columns]
         if missing_for_model:
             raise AssertionError(
@@ -250,6 +364,7 @@ def main():
     else:
         # No explicit list; proceed with all numeric (original behavior)
         X = X_all
+
 
 
     # Predict PD

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Risk Analysis Flagship — Operations</title>
+  <link rel="stylesheet" href="assets/css/site.css"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 text-slate-800">
+  <custom-header></custom-header>
+
+  <main class="container mx-auto px-4 py-8">
+    <!-- Ops Guide -->
+    <section class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Operations Guide</h1>
+
+      <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+        <div class="border-b border-gray-200">
+          <nav class="flex -mb-px">
+            <button id="hosted-tab"
+                    class="px-4 py-3 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600 focus:outline-none">
+              Hosted Mode
+            </button>
+            <button id="local-tab"
+                    class="px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 focus:outline-none">
+              Local Mode
+            </button>
+          </nav>
+        </div>
+
+        <div class="p-6">
+          <!-- Hosted -->
+          <div id="hosted-content">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Running in Hosted Mode</h2>
+            <p class="text-gray-600 mb-4">
+              In hosted mode, the dashboard reads from pre-generated demo data included under
+              <code class="bg-gray-100 px-1 py-0.5 rounded">docs_site/demo_data/</code>.
+            </p>
+
+            <div class="bg-gray-50 p-4 rounded-lg mb-4">
+              <h3 class="font-medium text-gray-800 mb-2">Directory Structure</h3>
+              <pre class="text-sm text-gray-800 bg-white p-3 rounded overflow-auto">
+docs_site/
+├── demo_data/
+│   ├── credit/
+│   │   └── kpis_daily.csv
+│   └── fraud/
+│       ├── kpis_daily.csv
+│       └── metrics_daily.csv</pre>
+            </div>
+
+            <p class="text-gray-600">
+              To switch to local mode, edit <code class="bg-gray-100 px-1 py-0.5 rounded">config.json</code> and set
+              <code class="bg-gray-100 px-1 py-0.5 rounded">"mode": "local"</code>.
+            </p>
+          </div>
+
+          <!-- Local -->
+          <div id="local-content" class="hidden">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Running in Local Mode</h2>
+            <p class="text-gray-600 mb-4">
+              In local mode, the dashboard reads from your pipeline outputs in the
+              <code class="bg-gray-100 px-1 py-0.5 rounded">docs_global/</code> directory.
+            </p>
+
+            <div class="bg-gray-50 p-4 rounded-lg mb-4">
+              <h3 class="font-medium text-gray-800 mb-2">Required Directory Structure</h3>
+              <pre class="text-sm text-gray-800 bg-white p-3 rounded overflow-auto">
+your_repo/
+├── docs_site/ (this dashboard)
+└── docs_global/
+    ├── bi/
+    │   ├── credit/
+    │   │   └── kpis_daily.csv
+    │   └── fraud/
+    │       ├── kpis_daily.csv
+    │       └── metrics_daily.csv
+    └── reports/
+        ├── credit/
+        │   └── YYYY-MM-DD/
+        │       └── credit_daily_report.html
+        └── fraud/
+            └── YYYY-MM-DD/
+                └── fraud_daily_report.html</pre>
+            </div>
+
+            <p class="text-gray-600">
+              Serve the site from the repo root:
+              <code class="bg-gray-100 px-1 py-0.5 rounded">python -m http.server</code>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Server Health -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-semibold text-gray-800 mb-6">Server Health</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Credit API -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <div class="flex items-center mb-4">
+            <i data-feather="credit-card" class="text-indigo-600 mr-3"></i>
+            <h3 class="text-lg font-medium text-gray-800">Credit API</h3>
+          </div>
+          <div class="flex items-center justify-between">
+            <span id="credit-endpoint" class="text-sm text-gray-600">Checking…</span>
+            <span id="credit-health-badge"
+                  class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Checking…</span>
+          </div>
+        </div>
+
+        <!-- Fraud API -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <div class="flex items-center mb-4">
+            <i data-feather="shield" class="text-emerald-600 mr-3"></i>
+            <h3 class="text-lg font-medium text-gray-800">Fraud API</h3>
+          </div>
+          <div class="flex items-center justify-between">
+            <span id="fraud-endpoint" class="text-sm text-gray-600">Checking…</span>
+            <span id="fraud-health-badge"
+                  class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Checking…</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Links -->
+    <section class="mb-4">
+      <h2 class="text-2xl font-semibold text-gray-800 mb-4">Quick Links</h2>
+      <ul class="space-y-2">
+        <li>
+          <a href="http://127.0.0.1:5000" target="_blank" rel="noopener noreferrer"
+             class="text-blue-600 hover:underline">
+            Open MLflow (Local)
+          </a>
+        </li>
+        <li>
+          <a href="../" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">
+            Open Repo Root
+          </a>
+        </li>
+        <li>
+          <a href="../TASK_GUIDE.md" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">
+            TASK_GUIDE.md (if present)
+          </a>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <custom-footer></custom-footer>
+
+  <!-- App scripts -->
+  <script src="assets/js/utils.js"></script>
+  <script src="components/header.js"></script>
+  <script src="components/footer.js"></script>
+
+  <!-- Page logic -->
+  <script>
+    // Tab toggling
+    const hostedTab = document.getElementById('hosted-tab');
+    const localTab  = document.getElementById('local-tab');
+    const hostedContent = document.getElementById('hosted-content');
+    const localContent  = document.getElementById('local-content');
+
+    function setTab(active) {
+      const makeActive = (btn) => {
+        btn.classList.remove('text-gray-500', 'border-transparent');
+        btn.classList.add('text-indigo-600', 'border-indigo-600');
+      };
+      const makeInactive = (btn) => {
+        btn.classList.add('text-gray-500', 'border-transparent');
+        btn.classList.remove('text-indigo-600', 'border-indigo-600');
+      };
+
+      if (active === 'hosted') {
+        makeActive(hostedTab); makeInactive(localTab);
+        hostedContent.classList.remove('hidden');

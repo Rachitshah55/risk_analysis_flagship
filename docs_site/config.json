@@ -1,0 +1,8 @@
+{
+    "mode": "hosted",
+    "_comment_mode": "hosted = use bundled demo_data",
+    "apiBase": "http://127.0.0.1:8000",
+    "useMock": true,
+    "_comment_useMock": "true = disable real API calls/buttons"
+  }
+  

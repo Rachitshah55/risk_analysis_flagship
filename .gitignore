@@ -71,3 +71,12 @@ payload.json
 
 shared_env/secrets/
 !shared_env/secrets/README.md
+
+# Generated data / secrets
+docs_global/**
+shared_env/**/secrets/**
+.env
+.env.*
+mlruns/
+__pycache__/
+*.pyc

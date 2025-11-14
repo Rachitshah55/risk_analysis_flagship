@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Risk Analysis Flagship — Fraud Detection</title>
+  <link rel="stylesheet" href="assets/css/site.css"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 text-slate-800">
+  <custom-header></custom-header>
+
+  <main class="container mx-auto px-4 py-8">
+    <section class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Fraud Detection Analysis</h1>
+
+      <!-- KPI cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-2">Flagged Rate</h3>
+          <div id="flagged-rate" class="text-2xl font-bold text-red-600">--%</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-2">Precision</h3>
+          <div id="precision" class="text-2xl font-bold text-blue-600">--%</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-2">Recall</h3>
+          <div id="recall" class="text-2xl font-bold text-green-600">--%</div>
+        </div>
+      </div>
+
+      <!-- Today's report (shown only in Local mode) -->
+      <div id="fraud-report-button" class="mb-8 hidden">
+        <a id="fraud-report-link" href="#" target="_blank"
+           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <i data-feather="file-text" class="mr-2"></i>
+          Open Today's Fraud Report
+        </a>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Precision Trend (30 days)</h3>
+          <canvas id="precision-trend-chart" height="250" aria-label="Precision trend 30 days" role="img"></canvas>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Recall Trend (30 days)</h3>
+          <canvas id="recall-trend-chart" height="250" aria-label="Recall trend 30 days" role="img"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- API Playground -->
+    <section class="bg-white rounded-xl shadow-md p-6 mb-8">
+      <h2 class="text-2xl font-semibold text-gray-800 mb-6">Fraud Detection API Demo</h2>
+
+      <div class="mb-6">
+        <label for="fraud-payload" class="block text-sm font-medium text-gray-700 mb-2">Request Payload</label>
+        <textarea id="fraud-payload" rows="8"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{
+    "transaction_id": "TXN789012",
+    "amount": 1250.75,
+    "merchant_category": "electronics",
+    "time_since_last_txn": 120,
+    "avg_txn_amount": 350.20,
+    "cardholder_name_match": false,
+    "ip_country_mismatch": true,
+    "device_velocity": 3,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "billing_zip_match": false
+}</textarea>
+      </div>
+
+      <div class="flex flex-wrap gap-3 mb-6">
+        <button id="fraud-api-btn"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          <i data-feather="send" class="mr-2"></i>
+          Score via API
+        </button>
+        <button id="fraud-sample-btn"
+                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+          <i data-feather="copy" class="mr-2"></i>
+          Use Sample
+        </button>
+      </div>
+
+      <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <h3 class="text-lg font-medium text-gray-800 mb-2">API Response</h3>
+        <pre id="fraud-api-response"
+             class="text-sm text-gray-800 p-4 bg-white rounded overflow-auto max-h-64">Submit a request to see the response...</pre>
+      </div>
+    </section>
+  </main>
+
+  <custom-footer></custom-footer>
+
+  <!-- App scripts -->
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/fraud.js"></script>
+  <script src="components/header.js"></script>
+  <script src="components/footer.js"></script>
+
+  <!-- Page bootstrap -->
+  <script>
+    (async () => {
+      try {
+        // 1) Show today's report link only in Local mode
+        if (window.showTodayReportIfLocal) {
+          await window.showTodayReportIfLocal('fraud', 'fraud-report-button');
+        }
+
+        // 2) Disable API button if using mock mode (hosted) per config.json
+        const cfg = await (window.loadConfig ? window.loadConfig() : Promise.resolve({ useMock: true }));
+        const apiBtn = document.getElementById('fraud-api-btn');
+        if (apiBtn && cfg.useMock) {
+          apiBtn.disabled = true;
+          apiBtn.title = 'Disabled in hosted/mock mode (set useMock=false in config.json to enable)';
+        }
+      } catch { /* non-fatal */ }
+
+      feather.replace();
+    })();
+  </script>
+</body>
+</html>
