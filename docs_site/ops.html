@@ -35,8 +35,17 @@
           <div id="hosted-content">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Running in Hosted Mode</h2>
             <p class="text-gray-600 mb-4">
-              In hosted mode, the dashboard reads from pre-generated demo data included under
-              <code class="bg-gray-100 px-1 py-0.5 rounded">docs_site/demo_data/</code>.
+              In hosted mode, the dashboard reads from pre-generated demo CSVs under
+              <code class="bg-gray-100 px-1 py-0.5 rounded">docs_site/demo_data/</code>,
+              built offline from two CC0 Kaggle datasets:
+            </p>
+            <ul class="list-disc list-inside text-gray-600 mb-4 ml-4">
+              <li>Credit: “Give Me Some Credit” (loan-level default dataset)</li>
+              <li>Fraud: “Credit Card Transactions Fraud Detection Dataset” (transaction-level fraud labels)</li>
+            </ul>
+            <p class="text-gray-600 mb-4">
+              The public site shows a fixed 30-day snapshot. In local mode, a daily scheduler regenerates
+              these KPIs from fresh scoring output under docs_global/bi/.
             </p>
 
             <div class="bg-gray-50 p-4 rounded-lg mb-4">
@@ -105,10 +114,10 @@ your_repo/
             <i data-feather="credit-card" class="text-indigo-600 mr-3"></i>
             <h3 class="text-lg font-medium text-gray-800">Credit API</h3>
           </div>
-          <div class="flex items-center justify-between">
-            <span id="credit-endpoint" class="text-sm text-gray-600">Checking…</span>
-            <span id="credit-health-badge"
-                  class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Checking…</span>
+          <div class="flex items-center justify-between">            
+            <p class="text-sm text-gray-500">
+              Available in local mode only (not checked on hosted demo).
+            </p>
           </div>
         </div>
 
@@ -119,9 +128,9 @@ your_repo/
             <h3 class="text-lg font-medium text-gray-800">Fraud API</h3>
           </div>
           <div class="flex items-center justify-between">
-            <span id="fraud-endpoint" class="text-sm text-gray-600">Checking…</span>
-            <span id="fraud-health-badge"
-                  class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Checking…</span>
+            <p class="text-sm text-gray-500">
+              Available in local mode only (not checked on hosted demo).
+            </p>
           </div>
         </div>
       </div>

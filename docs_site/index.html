@@ -19,9 +19,9 @@
   <!-- Mode & Freshness banner -->
   <div id="mode-banner" class="bg-gradient-to-r from-indigo-50 to-emerald-50 border-b border-indigo-100">
     <div class="container mx-auto px-4 py-2 text-sm text-slate-700 flex items-center gap-2">
-      <span id="mode-label" class="font-medium">Mode: …</span>
+      <span id="mode-label" class="font-medium">Mode: Hosted demo</span>
       <span aria-hidden="true">•</span>
-      <span id="freshness-label" class="text-slate-600">Freshness: --</span>
+      <span id="freshness-label" class="text-slate-600">Snapshot end: --</span>
     </div>
   </div>
 
@@ -40,7 +40,7 @@
             Watch 90-sec System Demo
           </a>
           <p class="text-sm text-gray-500 mt-2">
-            Online demo uses sample data; the video shows local scoring API + alerts.
+            Online demo uses sample data generated from Kaggle datasets; the video shows local scoring API + alerts and the daily scheduler.
           </p>
         </div>
       </div>
@@ -77,10 +77,11 @@
         <div class="bg-white rounded-xl shadow-md p-6">
           <div class="flex items-center mb-4">
             <i data-feather="clock" class="text-purple-600 mr-3"></i>
-            <h3 class="text-lg font-medium text-gray-800">Data Freshness</h3>
+            <h3 class="text-lg font-medium text-gray-800">Demo Snapshot</h3>
           </div>
-          <div id="freshness-kpi" class="animate-pulse h-32 flex items-center justify-center">
-            <div class="text-gray-400">Loading data...</div>
+          <div id="freshness-kpi" class="h-32 flex flex-col justify-center">
+            <p id="freshness-date" class="text-lg font-bold text-gray-800">Snapshot End Date: --</p>
+            <p class="text-sm text-gray-500 mt-2">30-day window from Kaggle credit & fraud datasets</p>
           </div>
         </div>
 
@@ -130,7 +131,7 @@
       try {
         const cfg = await (window.loadConfig ? window.loadConfig() : Promise.resolve({ mode: 'hosted' }));
         const modeEl = document.getElementById('mode-label');
-        if (modeEl) modeEl.textContent = `Mode: ${cfg.mode === 'local' ? 'Local' : 'Hosted'}`;
+        if (modeEl) modeEl.textContent = `Mode: ${cfg.mode === 'local' ? 'Local' : 'Hosted demo'}`;
       } catch { /* non-fatal */ }
 
       // feather icons
