@@ -83,3 +83,7 @@ __pycache__/
 
 .kaggle/
 *.zip
+
+data/kaggle/
+*.zip
+
