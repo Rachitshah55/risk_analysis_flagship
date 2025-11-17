@@ -212,7 +212,7 @@ For detailed run instructions:
 
 ---
 
-## 7. Tech stack (short version) -needs fixing
+## 7. Tech stack (short version) 
 
 - **Languages / Core:** Python 3.13, SQL-ish style via pandas
 - **Models:** scikit-learn, XGBoost
@@ -222,7 +222,7 @@ For detailed run instructions:
 - **Monitoring:** Evidently, custom validators, JSON/CSV/HTML reports
 - **Orchestration:** Simple Python “flows” + Windows Task Scheduler
 - **Frontend:** Static HTML/CSS/JS showroom (docs_site) on Cloudflare Pages
-- **BI:** Tableau seed [Risk_Analytics_seed.twbx](docs_global\bi\tableau\Risk_Analytics_seed.twbx) **needs fixing**
+- **BI:** Tableau seed [Risk_Analytics_seed.twbx](docs_global\bi\tableau\Risk_Analytics_seed.twbx) 
 
 ---
 

@@ -23,3 +23,4 @@ total_txns,flagged,flagged_pct,p50_latency_ms,p95_latency_ms,precision,recall,fp
 0,0,0.0,,,,,,,,[],True,2025-11-14,fraud
 0,0,0.0,,,,,,,,[],True,2025-11-15,fraud
 2,0,0.0,3.5,3.95,,,,0.0,"[{""arm"": ""prod"", ""n"": 2, ""flagged"": 0, ""flagged_pct"": 0.0}]",[],True,2025-11-16,fraud
+0,0,0.0,,,,,,,,[],True,2025-11-17,fraud
