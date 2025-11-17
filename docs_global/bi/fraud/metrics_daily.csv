@@ -22,3 +22,4 @@ date,requests,flagged_rate,review_rate,mean_proba,p95_latency_ms,ref_date,proba_
 2025-11-13,0,0.0,0.0,0.0,0.0,2025-11-12,,,fraud
 2025-11-14,0,0.0,0.0,0.0,0.0,2025-11-13,,,fraud
 2025-11-15,0,0.0,0.0,0.0,0.0,2025-11-14,,,fraud
+2025-11-16,2,1.0,0.0,0.12488396465778351,3.95,2025-11-15,proba,latency_ms,fraud
