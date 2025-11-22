@@ -13,7 +13,7 @@ class CustomFooter extends HTMLElement {
               rel="noreferrer"
               class="hover:text-indigo-600 underline"
             >
-              Personal site
+              Main site
             </a>
           </div>
         </div>
