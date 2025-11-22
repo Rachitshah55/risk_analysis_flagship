@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <style>
+      .bg {
+        fill: #262626; /* dark circle background – close to your logo */
+      }
+      .text {
+        fill: #f9fafb; /* light text */
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-weight: 600;
+        font-size: 26px;
+        letter-spacing: 3px;
+      }
+    </style>
+  </defs>
+
+  <!-- Circle -->
+  <circle class="bg" cx="32" cy="32" r="30" />
+
+  <!-- RS text -->
+  <text class="text" x="32" y="37" text-anchor="middle">RS</text>
+</svg>
