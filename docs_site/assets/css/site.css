@@ -1,10 +1,252 @@
-:root{
-    --brand: #4f46e5;   /* indigo-600 */
-    --brand2:#10b981;   /* emerald-500 */
+/* ===========================================================
+   Risk Analysis Flagship — Theme
+   Match visual style to personal portfolio (Geist + LAB dark)
+   ========================================================== */
+
+/* ---------- Design tokens (copied from personal site) ---------- */
+
+:root {
+  /* Neutrals (shadcn-ish) */
+  --background: #020817;
+  --background-soft: #050a16;
+  --card: #020617;
+  --card-elevated: #050a18;
+  --border: #1f2937;
+  --border-subtle: #111827;
+
+  --foreground: #e5e7eb;
+  --foreground-strong: #f9fafb;
+  --foreground-muted: #9ca3af;
+  --foreground-soft: #6b7280;
+
+  --accent: #f9fafb;       /* light neutral for primary buttons */
+  --accent-foreground: #020617;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --shadow-subtle: 0 10px 24px rgba(0, 0, 0, 0.4);
+
+  --max-width: 1120px;
+}
+
+/* LAB-based dark theme tokens — override hex when supported */
+@supports (color: lab(0% 0 0)) {
+  :root {
+    /* Core neutrals */
+    --background: lab(2.75381% 0 0);
+    --background-soft: lab(2.75381% 0 0);
+    --card: lab(7.78201% -0.000149012 0);
+    --card-elevated: lab(15.204% 0 -0.0000596046);
+    --border: lab(10% 0 0 / .15);
+    --border-subtle: lab(10% 0 0 / .10);
+
+    /* Text */
+    --foreground: lab(90.952% 0 -0.000119209);
+    --foreground-strong: lab(98.26% 0 0);
+    --foreground-muted: lab(66.128% -0.000298023 0.0000119209);
+    --foreground-soft: lab(67.52% 0.000298023 0);
+
+    /* Primary / accent */
+    --accent: lab(90.952% 0 -0.000119209);
+    --accent-foreground: lab(7.78201% -0.000149012 0);
+
+    /* Extra tokens (used in cards / palette) */
+    --popover: lab(15.204% 0 -0.0000596046);
+    --popover-foreground: lab(98.26% 0 0);
+    --primary: lab(90.952% 0 -0.000119209);
+    --primary-foreground: lab(7.78201% -0.000149012 0);
+    --secondary: lab(15.204% 0 -0.0000596046);
+    --secondary-foreground: lab(98.26% 0 0);
+    --muted: lab(15.204% 0 -0.0000596046);
+    --muted-foreground: lab(66.128% -0.000298023 0.0000119209);
+    --destructive: lab(63.7535% 60.745 31.3109);
+    --destructive-foreground: lab(7.78201% -0.000149012 0);
+    --input: lab(10% 0 0 / .15);
+    --ring: lab(48.496% 0 0);
+
+    /* Sidebar / surface / code tokens (used in palette & future pages) */
+    --sidebar: lab(7.78201% -0.000149012 0);
+    --sidebar-foreground: lab(98.26% 0 0);
+    --sidebar-primary: lab(36.9809% 35.0961 -85.6872);
+    --sidebar-primary-foreground: lab(98.26% 0 0);
+    --sidebar-accent: lab(15.204% 0 -0.0000596046);
+    --sidebar-accent-foreground: lab(98.26% 0 0);
+    --sidebar-border: lab(10% 0 0 / .1);
+    --sidebar-ring: lab(34.924% 0 0);
+    --surface: lab(7.22637% 0.000149012 0);
+    --surface-foreground: lab(66.128% -0.000298023 0.0000119209);
+    --code-highlight: lab(15.326% 0 0);
+    --code-number: lab(67.52% 0.000298023 0);
+    --selection: lab(90.952% 0 -0.000119209);
+    --selection-foreground: lab(7.78201% -0.000149012 0);
   }
-  body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial; }
-  .header-gradient { background: linear-gradient(90deg, rgba(79,70,229,.10), rgba(16,185,129,.10)); }
-  .card:hover { box-shadow: 0 8px 20px rgba(2,6,23,.08); transform: translateY(-1px); transition: all .2s; }
-  .kpi-value { letter-spacing: .2px; }
-  .badge { padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:.75rem; }
-  
+}
+
+/* ---------- Base typography ---------- */
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keep Tailwind layout but pull it into same max-width as portfolio */
+main.container {
+  max-width: var(--max-width);
+}
+
+/* Headings */
+h1 {
+  margin: 0 0 0.9rem;
+  font-size: clamp(2.1rem, 3vw, 2.7rem);
+  line-height: 1.1;
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--foreground-strong);
+}
+
+h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--foreground-strong);
+}
+
+p {
+  color: var(--foreground-soft);
+}
+
+/* Links inherit color; hover just underlines */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Tailwind color overrides (make it dark like portfolio) ---------- */
+
+/* Backgrounds */
+.bg-gray-50,
+.bg-gray-100 {
+  background-color: var(--background-soft) !important;
+}
+
+.bg-white {
+  background-color: var(--card) !important;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-subtle);
+  border: 1px solid var(--border-subtle);
+}
+
+.bg-gray-200 {
+  background-color: var(--background-soft) !important;
+}
+
+/* Text colors */
+.text-slate-800,
+.text-slate-900,
+.text-gray-800 {
+  color: var(--foreground) !important;
+}
+
+.text-slate-600,
+.text-slate-500,
+.text-gray-600,
+.text-gray-500 {
+  color: var(--foreground-muted) !important;
+}
+
+.text-white {
+  color: var(--accent-foreground) !important;
+}
+
+/* Accent numbers / links */
+.text-blue-600,
+.text-indigo-600 {
+  color: var(--accent) !important;
+}
+
+/* KPI success/alert colors */
+.text-emerald-600,
+.text-green-600 {
+  color: #34d399 !important; /* bright success */
+}
+
+.text-red-600 {
+  color: var(--destructive) !important;
+}
+
+/* Buttons */
+.bg-blue-600,
+.bg-indigo-600 {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+.hover\:bg-blue-700:hover,
+.hover\:bg-indigo-700:hover {
+  background-color: var(--foreground-strong) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Hover state for those gray filter buttons */
+.hover\:bg-gray-300:hover {
+  background-color: var(--card-elevated) !important;
+}
+
+/* Borders */
+.border-gray-200,
+.border-gray-300,
+.border-indigo-100,
+.border-slate-200 {
+  border-color: var(--border-subtle) !important;
+}
+
+.border-indigo-600 {
+  border-color: var(--accent) !important;
+}
+
+/* Gradient banner at top (mode banner) */
+.bg-gradient-to-r.from-indigo-50.to-emerald-50 {
+  background:
+    radial-gradient(circle at top left, rgba(129, 140, 248, 0.24), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.18), transparent 60%);
+}
+
+/* KPI numbers slightly brighter */
+.kpi-value {
+  letter-spacing: .2px;
+  color: var(--foreground-strong);
+}
+
+/* Optional: round things a bit more like portfolio */
+.rounded-lg,
+.rounded-xl {
+  border-radius: var(--radius-lg);
+}
+
+/* Footer text */
+footer {
+  background-color: var(--background-soft);
+}
