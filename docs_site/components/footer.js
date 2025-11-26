@@ -8,7 +8,7 @@ class CustomFooter extends HTMLElement {
           <div class="flex flex-wrap items-center gap-4">
             <span>Demo site • Data from local pipelines or bundled samples</span>
             <a
-              href="https://rachit-personal-website.pages.dev/"
+              href="https://rs-potfolio-website.pages.dev/"
               target="_blank"
               rel="noreferrer"
               class="hover:text-indigo-600 underline"
