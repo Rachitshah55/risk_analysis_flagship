@@ -40,3 +40,8 @@ def send_gmail_api(subject: str, body: str, sender: str, recipients: list[str]) 
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
     svc = _get_service()
     svc.users().messages().send(userId="me", body={"raw": raw}).execute()
+
+if __name__ == "__main__":
+    # One-time helper to create or refresh gmail_token.json locally
+    _get_service()
+    print(f"Gmail token stored at: {TOKEN_JSON}")
