@@ -8,6 +8,7 @@ End-to-end **credit risk** and **transaction fraud** platform designed to look l
 - CI + governance gate, audit packs, and Tableau seed
 - Hosted static showroom + local live-API demo
 
+[**Project website**](https://risk-analysis-flagship.pages.dev/)
 ---
 
 ## 1. What this project demonstrates
@@ -36,18 +37,19 @@ Built and tested end-to-end on **Windows + Python 3.13**.
 
 ---
 
-## 2. Live demo & video
+## 2. Live demo 
 
-### Hosted showroom (Cloudflare Pages)
+### 2.1 Hosted showroom (Cloudflare Pages)
 
 Static docs_site, safe for recruiters:
 
  [**Risk Analysis Flagship**](https://risk-analysis-flagship.pages.dev/)
-- Uses **pre-aggregated Kaggle-based CSVs** only:
+ 
+ It Uses **pre-aggregated Kaggle-based CSVs** only:
   - [credit\kpis_daily.csv](docs_site/demo_data/credit/kpis_daily.csv)
   - [fraud\kpis_daily.csv](docs_site/demo_data/fraud/kpis_daily.csv)
   - [fraud\metrics_daily.csv](docs_site/demo_data/fraud/metrics_daily.csv)
-- No live APIs, no raw data, no secrets.
+
 
 The hosted demo shows:
 
@@ -56,7 +58,23 @@ The hosted demo shows:
 - Fraud page with detection KPIs & latency
 - Ops view with server/flows explainer cards
 
-### Local live-API demo (for interviews)
+### 2.2. Tableau dashboards (recommended BI view)
+
+Primary BI view for this project:
+
+[**Risk Analytics — Credit & Fraud KPIs (Tableau Public)**](https://public.tableau.com/views/DailyRiskCommandCenterCreditFraud/RiskCommandCenter?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)  
+  
+
+The Tableau dashboard is bound to the same CSV outputs used by the showroom and displays:
+
+- Daily KPIs for credit and fraud  
+- Segment breakdowns and trend views  
+- Quick visual summary of PD/EL movement and fraud detection performance  
+
+Locally, a **seed Tableau workbook** is maintained as `Risk_Analytics_seed.twbx` under `docs_global/bi/tableau/` (local, gitignored) to rebuild or extend dashboards directly from raw project outputs.
+
+
+### 2.3 Local live-API demo (for interviews)
 
 Locally you can switch docs_site into **live API mode**:
 
@@ -239,4 +257,4 @@ If you’re reviewing this repo:
    - Run `shared_env\ci\governance_gate.py` to see CI logic locally
    - Trigger the alert bridge test once
 
-The repo is meant to look and behave like a realistic, self-contained **risk analytics platform**, not just a toy notebook.
+The repo is meant to look and behave like a realistic, self-contained **risk analytics platform**, not just notebook.
