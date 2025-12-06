@@ -123,11 +123,11 @@ This will:
 - Render daily HTML report (Stage 6)
 - Export BI-friendly CSVs for Tableau
 
-Outputs (example):
+sample outputs (checked into the repo for GitHub view):
 
 - [pd_scores_YYYYMMDD.parquet](credit_scoring_system/outputs/scoring/pd_scores_20251116.parquet)
-- [drift_report.html](docs_global/monitoring/credit/2025-11-16/drift_report.html)
-- [credit_daily_report.html](docs_global/reports/credit/2025-11-16/credit_daily_report.html)
+- [drift_report.html](credit_scoring_system\sample_outputs\credit\monitoring\2025-12-05\drift_report.html)
+- [credit_daily_report.html](credit_scoring_system\sample_outputs\credit\reports\2025-12-05\credit_daily_report.html)
 
 Open the latest daily report in your browser (or via VS Code task).
 
@@ -141,13 +141,25 @@ This will:
 
 - Parse latest fraud API logs
 - Write daily monitoring outputs
+- Render a daily fraud HTML report
 - Export BI-friendly CSVs
 
-Outputs (example):
+⚠️ Important: All real runtime outputs live under docs_global/....
+That directory is gitignored on purpose, so you won’t see those files
+on GitHub. The paths below describe what happens locally; a static sample
+is also checked into fraud_detection_system/sample_outputs/... for
+reviewers.
 
-- [summary.csv](docs_global/monitoring/fraud/2025-11-16/drift_summary.csv)
-- [drift_report.html](docs_global/monitoring/fraud/2025-11-16/drift_report.html)
 
+sample outputs (checked into the repo for GitHub view):
+
+- [drift_summary.csv](fraud_detection_system\sample_outputs\fraud\monitoring\2025-12-05\drift_summary.csv)
+
+- [metrics.json](fraud_detection_system\sample_outputs\fraud\monitoring\2025-12-05\metrics.json)
+
+- [fraud_daily_report.html](fraud_detection_system\sample_outputs\fraud\reports\2025-12-05\fraud_daily_report.html)
+
+- [kpis.json](fraud_detection_system\sample_outputs\fraud\reports\2025-12-05\kpis.json)
 ---
 
 ## 4. Architecture at a glance
