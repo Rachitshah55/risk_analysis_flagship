@@ -1,0 +1,4 @@
+# Treat the static site as vendored / docs so it doesn't dominate language stats
+docs_site/** linguist-vendored
+docs/** linguist-documentation
+templates/** linguist-documentation
