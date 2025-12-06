@@ -109,11 +109,27 @@ def build_evidently_report(ref_df, cur_df, cols, out_html):
         pass
 
     # --- Plotly fallback (no Evidently required) --------------------------
+    # --- Plotly fallback (no Evidently required) ---
     try:
         import math
+        import numpy as np
+        import pandas as pd
         from io import StringIO
         import plotly.graph_objs as go
         from plotly.offline import plot as plot_html
+    except Exception:
+        # No plotting libs in this environment; HTML drift report is optional.
+        # Write a stub so callers don't crash.
+        with open(out_html, "w", encoding="utf-8") as f:
+            f.write(
+                "<html><body><h1>Fraud Drift Report</h1>"
+                "<p>Drift HTML is disabled because Evidently/Plotly are not "
+                "installed in this environment. Check metrics.json and "
+                "drift_summary.csv for monitoring details.</p>"
+                "</body></html>"
+            )
+        return False
+
 
         psi_rows = []
         figs = []
@@ -285,8 +301,8 @@ def main():
     )
     args = ap.parse_args()
 
-    root = Path(r"C:\DevProjects\risk_analysis_flagship")
-    logs_dir = root / r"fraud_detection_system\api\logs"
+    root = Path(__file__).resolve().parents[2]
+    logs_dir = root / "fraud_detection_system" / "api" / "logs"
 
     if args.dry_run:
         ref = pd.DataFrame(

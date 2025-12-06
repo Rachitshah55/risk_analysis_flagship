@@ -154,11 +154,8 @@ reviewers.
 sample outputs (checked into the repo for GitHub view):
 
 - [drift_summary.csv](fraud_detection_system\sample_outputs\fraud\monitoring\2025-12-05\drift_summary.csv)
-
 - [metrics.json](fraud_detection_system\sample_outputs\fraud\monitoring\2025-12-05\metrics.json)
-
 - [fraud_daily_report.html](fraud_detection_system\sample_outputs\fraud\reports\2025-12-05\fraud_daily_report.html)
-
 - [kpis.json](fraud_detection_system\sample_outputs\fraud\reports\2025-12-05\kpis.json)
 ---
 
